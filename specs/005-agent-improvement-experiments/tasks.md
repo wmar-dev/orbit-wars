@@ -21,8 +21,8 @@ description: "Task list for Agent Improvement Experiments (agent_v11–v15)"
 
 **Purpose**: Confirm the evaluation harness works against agent_v10 and create the experiment records directory baseline.
 
-- [ ] T001 Verify `eval.py --agent0 agent_v10.py --agent1 agent_v10.py --games 1` runs without error (sanity check before any new agent work)
-- [ ] T002 Confirm `experiments/` directory exists at repo root (create if absent)
+- [X] T001 Verify `eval.py --agent0 agent_v10.py --agent1 agent_v10.py --games 1` runs without error (sanity check before any new agent work)
+- [X] T002 Confirm `experiments/` directory exists at repo root (create if absent)
 
 ---
 
@@ -32,8 +32,8 @@ description: "Task list for Agent Improvement Experiments (agent_v11–v15)"
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Run `eval.py --agent0 agent_v10.py --agent1 agent_v10.py --games 20` (seeds 0–19) to confirm self-play parity (expected ~50%); record result as the baseline reference
-- [ ] T004 Read `agent_v10.py` in full and note the exact locations of: (a) fleet send logic, (b) `_path_safe()`, (c) target scoring loop — these are the insertion points for all four mechanics
+- [X] T003 Run `eval.py --agent0 agent_v10.py --agent1 agent_v10.py --games 20` (seeds 0–19) to confirm self-play parity (expected ~50%); record result as the baseline reference
+- [X] T004 Read `agent_v10.py` in full and note the exact locations of: (a) fleet send logic, (b) `_path_safe()`, (c) target scoring loop — these are the insertion points for all four mechanics
 
 **Checkpoint**: Baseline confirmed — candidate implementation can now begin
 
@@ -47,10 +47,10 @@ description: "Task list for Agent Improvement Experiments (agent_v11–v15)"
 
 ### Implementation for User Story 1
 
-- [ ] T005 [P] [US1] Create `experiments/2026-05-30-candidate-a-redundant-fleet.md` with Hypothesis, Change, Self-play result (TBD), Conclusion (TBD) sections — hypothesis: skipping already-covered targets reduces wasted launches
-- [ ] T006 [P] [US1] Create `experiments/2026-05-30-candidate-b-garrison-sizing.md` with Hypothesis, Change, Self-play result (TBD), Conclusion (TBD) sections — hypothesis: right-sizing fleet sends and enforcing a garrison floor improves net ship economy
-- [ ] T007 [P] [US1] Create `experiments/2026-05-30-candidate-c-threat-defense.md` with Hypothesis, Change, Self-play result (TBD), Conclusion (TBD) sections — hypothesis: narrow `incoming > garrison + production×5` threshold avoids agent_v6's over-defense trap
-- [ ] T008 [P] [US1] Create `experiments/2026-05-30-candidate-d-single-sender.md` with Hypothesis, Change, Self-play result (TBD), Conclusion (TBD) sections — hypothesis: restricting each target to one sender frees other planets to attack different targets
+- [X] T005 [P] [US1] Create `experiments/2026-05-30-candidate-a-redundant-fleet.md` with Hypothesis, Change, Self-play result (TBD), Conclusion (TBD) sections — hypothesis: skipping already-covered targets reduces wasted launches
+- [X] T006 [P] [US1] Create `experiments/2026-05-30-candidate-b-garrison-sizing.md` with Hypothesis, Change, Self-play result (TBD), Conclusion (TBD) sections — hypothesis: right-sizing fleet sends and enforcing a garrison floor improves net ship economy
+- [X] T007 [P] [US1] Create `experiments/2026-05-30-candidate-c-threat-defense.md` with Hypothesis, Change, Self-play result (TBD), Conclusion (TBD) sections — hypothesis: narrow `incoming > garrison + production×5` threshold avoids agent_v6's over-defense trap
+- [X] T008 [P] [US1] Create `experiments/2026-05-30-candidate-d-single-sender.md` with Hypothesis, Change, Self-play result (TBD), Conclusion (TBD) sections — hypothesis: restricting each target to one sender frees other planets to attack different targets
 
 **Checkpoint**: All four experiment records exist with hypotheses written — implementation may now begin
 
@@ -64,33 +64,33 @@ description: "Task list for Agent Improvement Experiments (agent_v11–v15)"
 
 ### Candidate A — Redundant Fleet Avoidance (agent_v11)
 
-- [ ] T009 [US2] Write `agent_v11.py` at repo root, building on agent_v10; add docstring listing mechanic (redundant fleet avoidance) and base agent (v10); implement: before each target evaluation, compute `sum(f.ships for f in obs.fleets if f.owner == my_id and f.destination == target) >= target.ships + 1`; if covered, skip target
-- [ ] T010 [US2] Run `eval.py --agent0 agent_v11.py --agent1 agent_v10.py --games 20` (seeds 0–19); record win/loss counts
-- [ ] T011 [US2] Update `experiments/2026-05-30-candidate-a-redundant-fleet.md` with Self-play result and Conclusion; note pass/fail vs 55% threshold
-- [ ] T012 [US2] Update README.md Agents table with agent_v11 and its win rate vs agent_v10 (FR-006)
+- [X] T009 [US2] Write `agent_v11.py` at repo root, building on agent_v10; add docstring listing mechanic (redundant fleet avoidance) and base agent (v10); implement: before each target evaluation, compute `sum(f.ships for f in obs.fleets if f.owner == my_id and f.destination == target) >= target.ships + 1`; if covered, skip target
+- [X] T010 [US2] Run `eval.py --agent0 agent_v11.py --agent1 agent_v10.py --games 20` (seeds 0–19); record win/loss counts
+- [X] T011 [US2] Update `experiments/2026-05-30-candidate-a-redundant-fleet.md` with Self-play result and Conclusion; note pass/fail vs 55% threshold
+- [X] T012 [US2] Update README.md Agents table with agent_v11 and its win rate vs agent_v10 (FR-006)
 
 ### Candidate B — Garrison Sizing (agent_v12)
 
-- [ ] T013 [US2] Write three sub-experiment variants of agent_v12 logic (inline in one file with a `GARRISON_FLOOR_MODE` constant): Mode A = `max(planet.production * 5, 1)`, Mode B = `max(planet.production * 10, 1)`, Mode C = `10`; send logic: `send = min(target.ships + 1, source.ships - garrison_floor)`; skip if `send <= 0`; include docstring
-- [ ] T014 [US2] Run eval for Mode A (`production × 5`): `eval.py --agent0 agent_v12.py --agent1 agent_v10.py --games 20` with `GARRISON_FLOOR_MODE='A'`; record win rate
-- [ ] T015 [US2] Run eval for Mode B (`production × 10`) and Mode C (fixed 10); record win rates for all three variants
-- [ ] T016 [US2] Select the best-performing sub-experiment variant; set it as the permanent `GARRISON_FLOOR_MODE` in `agent_v12.py`; add docstring note on winning variant
-- [ ] T017 [US2] Update `experiments/2026-05-30-candidate-b-garrison-sizing.md` with sub-experiment results table, winning variant, and Conclusion
-- [ ] T018 [US2] Update README.md Agents table with agent_v12 and its win rate vs agent_v10
+- [X] T013 [US2] Write three sub-experiment variants of agent_v12 logic (inline in one file with a `GARRISON_FLOOR_MODE` constant): Mode A = `max(planet.production * 5, 1)`, Mode B = `max(planet.production * 10, 1)`, Mode C = `10`; send logic: `send = min(target.ships + 1, source.ships - garrison_floor)`; skip if `send <= 0`; include docstring
+- [X] T014 [US2] Run eval for Mode A (`production × 5`): `eval.py --agent0 agent_v12.py --agent1 agent_v10.py --games 20` with `GARRISON_FLOOR_MODE='A'`; record win rate
+- [X] T015 [US2] Run eval for Mode B (`production × 10`) and Mode C (fixed 10); record win rates for all three variants
+- [X] T016 [US2] Select the best-performing sub-experiment variant; set it as the permanent `GARRISON_FLOOR_MODE` in `agent_v12.py`; add docstring note on winning variant
+- [X] T017 [US2] Update `experiments/2026-05-30-candidate-b-garrison-sizing.md` with sub-experiment results table, winning variant, and Conclusion
+- [X] T018 [US2] Update README.md Agents table with agent_v12 and its win rate vs agent_v10
 
 ### Candidate C — Threat-Aware Defense (agent_v13)
 
-- [ ] T019 [US2] Write `agent_v13.py` at repo root, building on agent_v10; add docstring; implement: at turn start, compute `threat[p] = sum(f.ships for f in obs.fleets if f.owner == enemy_id and f.destination == p)` for each owned planet; if `threat[p] > p.ships + p.production * 5`, dispatch reinforcement from the closest owned planet with surplus ships (`source.ships - garrison_floor > 0`); cap at one dispatch per threatened planet per turn; offensive logic unchanged
-- [ ] T020 [US2] Run `eval.py --agent0 agent_v13.py --agent1 agent_v10.py --games 20` (seeds 0–19); record win/loss counts
-- [ ] T021 [US2] Update `experiments/2026-05-30-candidate-c-threat-defense.md` with Self-play result and Conclusion; compare trigger frequency vs agent_v6 if data available
-- [ ] T022 [US2] Update README.md Agents table with agent_v13 and its win rate vs agent_v10
+- [X] T019 [US2] Write `agent_v13.py` at repo root, building on agent_v10; add docstring; implement: at turn start, compute `threat[p] = sum(f.ships for f in obs.fleets if f.owner == enemy_id and f.destination == p)` for each owned planet; if `threat[p] > p.ships + p.production * 5`, dispatch reinforcement from the closest owned planet with surplus ships (`source.ships - garrison_floor > 0`); cap at one dispatch per threatened planet per turn; offensive logic unchanged
+- [X] T020 [US2] Run `eval.py --agent0 agent_v13.py --agent1 agent_v10.py --games 20` (seeds 0–19); record win/loss counts
+- [X] T021 [US2] Update `experiments/2026-05-30-candidate-c-threat-defense.md` with Self-play result and Conclusion; compare trigger frequency vs agent_v6 if data available
+- [X] T022 [US2] Update README.md Agents table with agent_v13 and its win rate vs agent_v10
 
 ### Candidate D — Single-Sender Coordination (agent_v14)
 
-- [ ] T023 [US2] Write `agent_v14.py` at repo root, building on agent_v10; add docstring; implement: for each enemy/neutral target, compute `efficiency[source] = distance(source, target) / max(source.ships - garrison_floor, 1)` for all owned sources; only the source with minimum efficiency score may launch at that target this turn; use a fixed `garrison_floor = production * 5` as the baseline (or whichever value was proven by Candidate B if T016 is done first)
-- [ ] T024 [US2] Run `eval.py --agent0 agent_v14.py --agent1 agent_v10.py --games 20` (seeds 0–19); record win/loss counts
-- [ ] T025 [US2] Update `experiments/2026-05-30-candidate-d-single-sender.md` with Self-play result and Conclusion
-- [ ] T026 [US2] Update README.md Agents table with agent_v14 and its win rate vs agent_v10
+- [X] T023 [US2] Write `agent_v14.py` at repo root, building on agent_v10; add docstring; implement: for each enemy/neutral target, compute `efficiency[source] = distance(source, target) / max(source.ships - garrison_floor, 1)` for all owned sources; only the source with minimum efficiency score may launch at that target this turn; use a fixed `garrison_floor = production * 5` as the baseline (or whichever value was proven by Candidate B if T016 is done first)
+- [X] T024 [US2] Run `eval.py --agent0 agent_v14.py --agent1 agent_v10.py --games 20` (seeds 0–19); record win/loss counts
+- [X] T025 [US2] Update `experiments/2026-05-30-candidate-d-single-sender.md` with Self-play result and Conclusion
+- [X] T026 [US2] Update README.md Agents table with agent_v14 and its win rate vs agent_v10
 
 **Checkpoint**: All four candidates evaluated; pass/fail determined for each mechanic vs 55% threshold
 
@@ -104,13 +104,13 @@ description: "Task list for Agent Improvement Experiments (agent_v11–v15)"
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Review pass/fail results from T010–T025; list which mechanics passed ≥55%; if no mechanic passed, document in `experiments/` and skip T028–T033
-- [ ] T028 [US3] Write `agent_v15.py` at repo root building on agent_v10; include docstring listing all stacked mechanics and base agents; implement mechanics in integration order: (1) defense pass (C logic, if C passed), (2) single-sender filter per target (D logic, if D passed), (3) redundancy skip (A logic, if A passed), (4) garrison-floor send-sizing (B logic with winning variant from T016, if B passed); guard: defense dispatch bypasses single-sender constraint; guard: skip launch if `send <= 0` after floor subtraction
-- [ ] T029 [US3] Run `eval.py --agent0 agent_v15.py --agent1 agent_v10.py --games 20` (seeds 0–19); record win rate
-- [ ] T030 [US3] If win rate < 65%, test mechanic subsets (remove one mechanic at a time) to isolate regression — document findings in `experiments/2026-05-30-combined-agent-v15.md`
-- [ ] T031 [US3] Run `diagnose_v9.py --agent agent_v15.py --games 20`; verify 0 sun losses and 0 OOB losses (SC-004)
-- [ ] T032 [US3] Create `experiments/2026-05-30-combined-agent-v15.md` with stacked mechanics list, Self-play result vs agent_v10, diagnostic results, and Conclusion
-- [ ] T033 [US3] Update README.md Agents table: mark agent_v15 as the new best agent (bold) with its win rate vs agent_v10; include win rates for v11–v14
+- [X] T027 [US3] Review pass/fail results from T010–T025; list which mechanics passed ≥55%; if no mechanic passed, document in `experiments/` and skip T028–T033
+- [X] T028 [US3] Write `agent_v15.py` at repo root building on agent_v10; include docstring listing all stacked mechanics and base agents; implement mechanics in integration order: (1) defense pass (C logic, if C passed), (2) single-sender filter per target (D logic, if D passed), (3) redundancy skip (A logic, if A passed), (4) garrison-floor send-sizing (B logic with winning variant from T016, if B passed); guard: defense dispatch bypasses single-sender constraint; guard: skip launch if `send <= 0` after floor subtraction
+- [X] T029 [US3] Run `eval.py --agent0 agent_v15.py --agent1 agent_v10.py --games 20` (seeds 0–19); record win rate
+- [X] T030 [US3] If win rate < 65%, test mechanic subsets (remove one mechanic at a time) to isolate regression — document findings in `experiments/2026-05-30-combined-agent-v15.md`
+- [X] T031 [US3] Run `diagnose_v9.py --agent agent_v15.py --games 20`; verify 0 sun losses and 0 OOB losses (SC-004)
+- [X] T032 [US3] Create `experiments/2026-05-30-combined-agent-v15.md` with stacked mechanics list, Self-play result vs agent_v10, diagnostic results, and Conclusion
+- [X] T033 [US3] Update README.md Agents table: mark agent_v15 as the new best agent (bold) with its win rate vs agent_v10; include win rates for v11–v14
 
 **Checkpoint**: agent_v15 evaluated; SC-001 through SC-005 verified
 
@@ -120,10 +120,10 @@ description: "Task list for Agent Improvement Experiments (agent_v11–v15)"
 
 **Purpose**: Documentation completeness and spec closure
 
-- [ ] T034 [P] Verify all five experiment records have complete Self-play result and Conclusion sections (no TBD placeholders remaining)
-- [ ] T035 [P] Verify all five new agent files (v11–v15) have docstrings listing mechanics and base agents (FR-008)
-- [ ] T036 Confirm README.md Agents table lists all agents v2–v15 with accurate win rates; best agent bolded
-- [ ] T037 Review agent_v15.py for any safety guard regressions vs agent_v10: confirm `_path_safe()` is unchanged, sun exclusion = 12.0, OOB guard = [0, 100] inclusive, comet path index clamped
+- [X] T034 [P] Verify all five experiment records have complete Self-play result and Conclusion sections (no TBD placeholders remaining)
+- [X] T035 [P] Verify all five new agent files (v11–v15) have docstrings listing mechanics and base agents (FR-008)
+- [X] T036 Confirm README.md Agents table lists all agents v2–v15 with accurate win rates; best agent bolded
+- [X] T037 Review agent_v15.py for any safety guard regressions vs agent_v10: confirm `_path_safe()` is unchanged, sun exclusion = 12.0, OOB guard = [0, 100] inclusive, comet path index clamped
 
 ---
 
