@@ -18,8 +18,8 @@
 
 **Purpose**: Verify environment and confirm all prerequisite infrastructure is in place before writing new code.
 
-- [ ] T001 Verify eval.py supports arbitrary --agent0 and --agent1 flags by running `uv run python eval.py --agent0 agent_v2.py --agent1 main.py --games 1` and confirming it exits cleanly
-- [ ] T002 [P] Verify experiments/ directory exists at project root; create it if missing
+- [x] T001 Verify eval.py supports arbitrary --agent0 and --agent1 flags by running `uv run python eval.py --agent0 agent_v2.py --agent1 main.py --games 1` and confirming it exits cleanly
+- [x] T002 [P] Verify experiments/ directory exists at project root; create it if missing
 
 **Checkpoint**: Setup complete — ready to implement agent_v3.py
 
@@ -31,8 +31,8 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 Implement `_segment_dist_to_sun(ax, ay, bx, by) -> float` as a module-level helper in `agent_v3.py` using the formula from plan.md Phase 1 Core Algorithm Delta. Constants: `CENTER = 50.0`, `SUN_RADIUS = 10.0`, `SAFETY_MARGIN = 2.0`, `SUN_EXCLUSION = SUN_RADIUS + SAFETY_MARGIN`. Verify with a quick sanity check: `_segment_dist_to_sun(10, 50, 90, 50)` should return ~0 (path crosses center); `_segment_dist_to_sun(10, 10, 90, 10)` should return ~40 (path far from sun).
-- [ ] T004 Copy the full `agent(obs)` function body from `agent_v2.py` into `agent_v3.py` as the starting point, preserving all constants (`EPSILON`, `RANGE_FACTOR`) and the `Planet` import. File: `agent_v3.py`
+- [x] T003 Implement `_segment_dist_to_sun(ax, ay, bx, by) -> float` as a module-level helper in `agent_v3.py` using the formula from plan.md Phase 1 Core Algorithm Delta. Constants: `CENTER = 50.0`, `SUN_RADIUS = 10.0`, `SAFETY_MARGIN = 2.0`, `SUN_EXCLUSION = SUN_RADIUS + SAFETY_MARGIN`. Verify with a quick sanity check: `_segment_dist_to_sun(10, 50, 90, 50)` should return ~0 (path crosses center); `_segment_dist_to_sun(10, 10, 90, 10)` should return ~40 (path far from sun).
+- [x] T004 Copy the full `agent(obs)` function body from `agent_v2.py` into `agent_v3.py` as the starting point, preserving all constants (`EPSILON`, `RANGE_FACTOR`) and the `Planet` import. File: `agent_v3.py`
 
 **Checkpoint**: Foundation ready — `agent_v3.py` exists with helper and base agent logic
 
@@ -46,9 +46,9 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] In `agent_v3.py`, replace the candidate-filter block in `agent()` with the sun-safe version from plan.md Phase 1 Core Algorithm Delta: filter candidates to `sun_safe AND in_range`; add fallback to all sun-safe targets if no in-range safe candidates exist; add `continue` if no safe candidates at all. File: `agent_v3.py`
-- [ ] T006 [US1] Add module docstring to `agent_v3.py` describing the strategy: production-weighted targeting (inherited from agent_v2) plus sun-path avoidance via segment-distance check. File: `agent_v3.py`
-- [ ] T007 [US1] Smoke-test `agent_v3.py` against `main.py` for 1 game to confirm no crashes and valid return format: `uv run python eval.py --agent0 agent_v3.py --agent1 main.py --games 1`
+- [x] T005 [US1] In `agent_v3.py`, replace the candidate-filter block in `agent()` with the sun-safe version from plan.md Phase 1 Core Algorithm Delta: filter candidates to `sun_safe AND in_range`; add fallback to all sun-safe targets if no in-range safe candidates exist; add `continue` if no safe candidates at all. File: `agent_v3.py`
+- [x] T006 [US1] Add module docstring to `agent_v3.py` describing the strategy: production-weighted targeting (inherited from agent_v2) plus sun-path avoidance via segment-distance check. File: `agent_v3.py`
+- [x] T007 [US1] Smoke-test `agent_v3.py` against `main.py` for 1 game to confirm no crashes and valid return format: `uv run python eval.py --agent0 agent_v3.py --agent1 main.py --games 1`
 
 **Checkpoint**: User Story 1 complete — agent_v3.py runs cleanly without sun collisions
 
@@ -62,9 +62,9 @@
 
 ### Implementation for User Story 2
 
-- [ ] T008 [US2] Run head-to-head evaluation — agent_v3 vs baseline: `uv run python eval.py --agent0 agent_v3.py --agent1 main.py --games 10` and record the per-game results and aggregate win rate.
-- [ ] T009 [US2] Run head-to-head evaluation — agent_v3 vs agent_v2: `uv run python eval.py --agent0 agent_v3.py --agent1 agent_v2.py --games 10` and record the per-game results and aggregate win rate.
-- [ ] T010 [US2] Run a 3-game verbose comparison to observe strategy differences: `uv run python eval.py --agent0 agent_v3.py --agent1 agent_v2.py --games 3 --verbose` and note any turns where agent_v3 skips a target that agent_v2 would attack.
+- [x] T008 [US2] Run head-to-head evaluation — agent_v3 vs baseline: `uv run python eval.py --agent0 agent_v3.py --agent1 main.py --games 10` and record the per-game results and aggregate win rate.
+- [x] T009 [US2] Run head-to-head evaluation — agent_v3 vs agent_v2: `uv run python eval.py --agent0 agent_v3.py --agent1 agent_v2.py --games 10` and record the per-game results and aggregate win rate.
+- [x] T010 [US2] Run a 3-game verbose comparison to observe strategy differences: `uv run python eval.py --agent0 agent_v3.py --agent1 agent_v2.py --games 3 --verbose` and note any turns where agent_v3 skips a target that agent_v2 would attack.
 
 **Checkpoint**: Both win rates measured; developer can draw a conclusion about whether sun avoidance is a net positive strategy.
 
@@ -78,8 +78,8 @@
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Create `experiments/2026-05-29-sun-avoidance.md` with all required constitution fields: **Hypothesis** (sun avoidance eliminates fleet losses and may improve overall win rate), **Change** (segment-distance filter added to target selection in agent_v3.py), **Self-play result** (win rates from T008 and T009), **Conclusion** (net positive / neutral / negative assessment of sun avoidance strategy). File: `experiments/2026-05-29-sun-avoidance.md`
-- [ ] T012 [US3] Update `README.md` agents table to add a row for `agent_v3.py` with strategy description and win rate vs baseline (result from T008). File: `README.md`
+- [x] T011 [US3] Create `experiments/2026-05-29-sun-avoidance.md` with all required constitution fields: **Hypothesis** (sun avoidance eliminates fleet losses and may improve overall win rate), **Change** (segment-distance filter added to target selection in agent_v3.py), **Self-play result** (win rates from T008 and T009), **Conclusion** (net positive / neutral / negative assessment of sun avoidance strategy). File: `experiments/2026-05-29-sun-avoidance.md`
+- [x] T012 [US3] Update `README.md` agents table to add a row for `agent_v3.py` with strategy description and win rate vs baseline (result from T008). File: `README.md`
 
 **Checkpoint**: All three user stories complete. Constitution IV satisfied. Experiment documented.
 
@@ -89,8 +89,8 @@
 
 **Purpose**: Final validation and cleanup across all deliverables.
 
-- [ ] T013 [P] Verify `agent_v3.py` is self-contained (no imports beyond `math` and `kaggle_environments.envs.orbit_wars.orbit_wars.Planet`) and compatible with Kaggle submission format by reviewing all import statements
-- [ ] T014 Run the full quickstart.md validation sequence: smoke test (T007), both 10-game evals (T008, T009), confirm all print within 30 seconds each
+- [x] T013 [P] Verify `agent_v3.py` is self-contained (no imports beyond `math` and `kaggle_environments.envs.orbit_wars.orbit_wars.Planet`) and compatible with Kaggle submission format by reviewing all import statements
+- [x] T014 Run the full quickstart.md validation sequence: smoke test (T007), both 10-game evals (T008, T009), confirm all print within 30 seconds each
 
 ---
 

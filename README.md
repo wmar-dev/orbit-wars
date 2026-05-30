@@ -17,6 +17,7 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | --- | --- | --- |
 | `main.py` | Nearest-planet sniper (getting-started baseline) | — |
 | `agent_v2.py` | Production-weighted targeting | 90% (seeds 0–9), 70% (seeds 0–29) |
+| `agent_v3.py` | Production-weighted targeting + sun-path avoidance | 90% (seeds 0–9) |
 
 ## How It Works
 
@@ -24,7 +25,9 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 
 **`agent_v2.py`**: Scores all nearby non-owned planets by `production / distance` and targets the highest-value planet within `2× the nearest planet's distance`. Waits to afford the best nearby target rather than settling for a cheap low-value one.
 
-See [specs/001-beat-starter-agent/](specs/001-beat-starter-agent/) for the full design documents and [experiments/](experiments/) for results.
+**`agent_v3.py`**: Extends agent_v2 with sun-path avoidance — filters out any fleet dispatch whose straight-line path comes within 12 units of the sun center (radius 10 + safety margin 2). Falls back to any sun-safe target if none exist within range. Strategically equivalent to agent_v2 on seeds 0–9 (avoidance filter did not fire); strictly safer on seeds where paths cross the sun.
+
+See [specs/001-beat-starter-agent/](specs/001-beat-starter-agent/) and [specs/002-sun-avoidance-experiment/](specs/002-sun-avoidance-experiment/) for the full design documents and [experiments/](experiments/) for results.
 
 ## Evaluating Agents
 
