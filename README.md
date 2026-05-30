@@ -44,7 +44,9 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v28.py` | + No range limit on targets (Candidate Q) | 70% score vs v20 (20 games) |
 | `agent_v29.py` | + Production-squared ROI (Candidate R) | 45% score vs v20 (20 games) — FAIL |
 | `agent_v30.py` | Combined: lower garrison floor + no range limit | 75% score vs v20 (20 games), 100% 4P win rate, 0 sun/OOB losses |
-| **`agent_v31.py`** | **+ Reward-blend target scoring (Candidate S, REWARD_ALPHA=0.1)** | **61% score vs v30 (50 games)** |
+| `agent_v31.py` | + Reward-blend target scoring (Candidate S, REWARD_ALPHA=0.1) | 61% score vs v30 (50 games) |
+| `agent_v32.py` | Bug fixes: converged orbit-lead + comet evacuation from documented fields | 64% score vs v31 (50 games) |
+| **`agent_v33.py`** | **+ Production-squared ROI (Candidate R, passed on bug-fixed baseline)** | **60% score vs v32 (50 games)** |
 
 ## How It Works
 
