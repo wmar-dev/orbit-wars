@@ -18,8 +18,8 @@
 
 **Purpose**: Confirm shared infrastructure is in place before coding begins.
 
-- [ ] T001 Verify `experiments/` directory exists at repo root; if not, create it
-- [ ] T002 Confirm `.venv` Python environment is active and `kaggle_environments` imports cleanly: `uv run python -c "from kaggle_environments.envs.orbit_wars.orbit_wars import Planet, Fleet; print('OK')"`
+- [X] T001 Verify `experiments/` directory exists at repo root; if not, create it
+- [X] T002 Confirm `.venv` Python environment is active and `kaggle_environments` imports cleanly: `uv run python -c "from kaggle_environments.envs.orbit_wars.orbit_wars import Planet, Fleet; print('OK')"`
 
 **Checkpoint**: Environment confirmed — all phases can proceed.
 
@@ -31,13 +31,13 @@
 
 **⚠️ CRITICAL**: US1, US2, US3, US4, and US5 all depend on `reward_signal.py` being correct.
 
-- [ ] T003 Create `reward_signal.py` at repo root with module docstring, `RewardConfig` constants block (`W_CAPTURE=0.5`, `W_PRODUCTION=0.3`, `W_SHIP=0.2`, `CAPTURE_SCALE=10.0`, `PROD_SCALE=5.0`, `SHIP_SCALE=20.0`), and `zero_reward()` helper returning a zeroed TurnReward dict
-- [ ] T004 Implement `_parse_obs()` private helper in `reward_signal.py` that extracts `planets` (list of Planet namedtuples) and `fleets` (list of Fleet namedtuples) from a raw obs dict/object, raising `ValueError` with a descriptive message if required fields are missing
-- [ ] T005 Implement `_capture_bonus()` in `reward_signal.py`: compare `planets_prev` vs `planets_now` by planet id; sum `planet.production` for planets whose owner changed from non-player to player; normalize by `CAPTURE_SCALE`, clamp to [-1, 1]
-- [ ] T006 Implement `_production_delta()` in `reward_signal.py`: diff total production on owned planets between prev and now; normalize by `PROD_SCALE`, clamp to [-1, 1]
-- [ ] T007 Implement `_ship_delta()` in `reward_signal.py`: total owned ships = `sum(p.ships for p in planets if p.owner==player) + sum(f.ships for f in fleets if f.owner==player)`; diff between prev and now; normalize by `SHIP_SCALE`, clamp to [-1, 1]
-- [ ] T008 Implement `_terminal_reward()` in `reward_signal.py`: given `final_rewards` list and `player` index, compute rank (1-based, rank 1 = highest reward), return `1 - 2*(rank-1)/(N-1)` where N = number of players; handle ties by awarding same rank
-- [ ] T009 Implement `compute_reward()` public function in `reward_signal.py`: accepts `prev_obs`, `curr_obs`, `player`, optional `final_rewards` and `num_players`; returns TurnReward dict with keys `capture_bonus`, `production_delta`, `ship_delta`, `terminal` (null if non-terminal), `total`; on turn 0 (`prev_obs is None`) return `zero_reward()`; on terminal turn set `total = terminal` (not sum of per-turn components)
+- [X] T003 Create `reward_signal.py` at repo root with module docstring, `RewardConfig` constants block (`W_CAPTURE=0.5`, `W_PRODUCTION=0.3`, `W_SHIP=0.2`, `CAPTURE_SCALE=10.0`, `PROD_SCALE=5.0`, `SHIP_SCALE=20.0`), and `zero_reward()` helper returning a zeroed TurnReward dict
+- [X] T004 Implement `_parse_obs()` private helper in `reward_signal.py` that extracts `planets` (list of Planet namedtuples) and `fleets` (list of Fleet namedtuples) from a raw obs dict/object, raising `ValueError` with a descriptive message if required fields are missing
+- [X] T005 Implement `_capture_bonus()` in `reward_signal.py`: compare `planets_prev` vs `planets_now` by planet id; sum `planet.production` for planets whose owner changed from non-player to player; normalize by `CAPTURE_SCALE`, clamp to [-1, 1]
+- [X] T006 Implement `_production_delta()` in `reward_signal.py`: diff total production on owned planets between prev and now; normalize by `PROD_SCALE`, clamp to [-1, 1]
+- [X] T007 Implement `_ship_delta()` in `reward_signal.py`: total owned ships = `sum(p.ships for p in planets if p.owner==player) + sum(f.ships for f in fleets if f.owner==player)`; diff between prev and now; normalize by `SHIP_SCALE`, clamp to [-1, 1]
+- [X] T008 Implement `_terminal_reward()` in `reward_signal.py`: given `final_rewards` list and `player` index, compute rank (1-based, rank 1 = highest reward), return `1 - 2*(rank-1)/(N-1)` where N = number of players; handle ties by awarding same rank
+- [X] T009 Implement `compute_reward()` public function in `reward_signal.py`: accepts `prev_obs`, `curr_obs`, `player`, optional `final_rewards` and `num_players`; returns TurnReward dict with keys `capture_bonus`, `production_delta`, `ship_delta`, `terminal` (null if non-terminal), `total`; on turn 0 (`prev_obs is None`) return `zero_reward()`; on terminal turn set `total = terminal` (not sum of per-turn components)
 
 **Checkpoint**: `reward_signal.py` is complete and importable. All user story phases can now begin.
 
@@ -49,8 +49,8 @@
 
 **Independent Test**: `uv run python reward_signal.py` runs a live 2-player game via kaggle_environments, prints one TurnReward dict per turn per player, and exits cleanly. Confirm output has one line per (turn, player) across all turns and that the winning player's cumulative `total` is positive.
 
-- [ ] T010 [US1] Add `__main__` block to `reward_signal.py` that: imports `kaggle_environments`, runs a 10-turn game between two no-op agents, calls `compute_reward()` at each step for both players, prints each TurnReward dict as JSON — manually verify output format and that all `total` values are in [-1, 1]
-- [ ] T011 [US1] Run `uv run python reward_signal.py` and confirm: (a) exactly 2 rows per turn, (b) `total` is in [-1, 1] for all rows, (c) turn-0 row has all zeros, (d) final row has non-null `terminal`
+- [X] T010 [US1] Add `__main__` block to `reward_signal.py` that: imports `kaggle_environments`, runs a 10-turn game between two no-op agents, calls `compute_reward()` at each step for both players, prints each TurnReward dict as JSON — manually verify output format and that all `total` values are in [-1, 1]
+- [X] T011 [US1] Run `uv run python reward_signal.py` and confirm: (a) exactly 2 rows per turn, (b) `total` is in [-1, 1] for all rows, (c) turn-0 row has all zeros, (d) final row has non-null `terminal`
 
 **Checkpoint**: User Story 1 complete — reward module verified standalone. ✅
 
@@ -64,12 +64,12 @@
 
 **Independent Test**: `uv run python eval.py --reward-log rewards_test.jsonl --games 5` produces `rewards_test.jsonl` with one JSON object per (game, turn, player); win/loss totals are unchanged vs. a run without the flag.
 
-- [ ] T012 [US3] Add `--reward-log PATH` optional argument to `eval.py` argument parser (default: None); document in argparse help string
-- [ ] T013 [US3] Refactor `_run_game()` in `eval.py` to accumulate per-turn observations (`prev_obs`, `curr_obs`) via a lightweight wrapper around the agent functions; pass accumulated obs list back in the return tuple when `reward_log_enabled=True`
-- [ ] T014 [US3] After each game completes in `eval.py`, call `compute_reward()` for each (turn, player) pair and append TurnReward JSON objects to the `.jsonl` file (one file, append mode across all games); include `game_id` and `seed` fields in each record
-- [ ] T015 [US3] Confirm `eval.py` without `--reward-log` produces identical win/loss output as before (no regression introduced by obs collection refactor)
-- [ ] T016 [P] [US3] Apply the same `--reward-log` pattern to `eval4.py`: add argument, collect 4-player turn obs, write 4 rows per turn to `.jsonl`
-- [ ] T017 [P] [US3] Confirm `eval4.py` without `--reward-log` produces identical output (no regression)
+- [X] T012 [US3] Add `--reward-log PATH` optional argument to `eval.py` argument parser (default: None); document in argparse help string
+- [X] T013 [US3] Refactor `_run_game()` in `eval.py` to accumulate per-turn observations (`prev_obs`, `curr_obs`) via a lightweight wrapper around the agent functions; pass accumulated obs list back in the return tuple when `reward_log_enabled=True`
+- [X] T014 [US3] After each game completes in `eval.py`, call `compute_reward()` for each (turn, player) pair and append TurnReward JSON objects to the `.jsonl` file (one file, append mode across all games); include `game_id` and `seed` fields in each record
+- [X] T015 [US3] Confirm `eval.py` without `--reward-log` produces identical win/loss output as before (no regression introduced by obs collection refactor)
+- [X] T016 [P] [US3] Apply the same `--reward-log` pattern to `eval4.py`: add argument, collect 4-player turn obs, write 4 rows per turn to `.jsonl`
+- [X] T017 [P] [US3] Confirm `eval4.py` without `--reward-log` produces identical output (no regression)
 
 **Checkpoint**: User Story 3 complete — harness integration verified. US2 validation can now run. ✅
 
@@ -81,9 +81,9 @@
 
 **Independent Test**: Collect a 50-game log (`agent_v30` vs `agent_v3`); verify winning player has higher cumulative `total` reward in ≥80% of games (SC-002).
 
-- [ ] T018 [US2] Run: `uv run python eval.py --agent0 agent_v30.py --agent1 agent_v3.py --games 50 --seed 0 --jobs 4 --reward-log rewards_v30_vs_v3.jsonl` — save output
-- [ ] T019 [US2] Run inline analysis to verify SC-002: `uv run python -c "import json; games={}; [games.setdefault(r['game_id'],[]).append(r) for r in (json.loads(l) for l in open('rewards_v30_vs_v3.jsonl'))]; wins=sum(1 for g in games.values() if sum(r['total'] for r in g if r['player']==0)>sum(r['total'] for r in g if r['player']==1)); print(f'P0 cumulative reward > P1: {wins}/50 games ({wins*2}%)')"`
-- [ ] T020 [US2] Confirm SC-002 passes (≥80% = ≥40/50 games); if it fails, inspect which reward weights are underweighted using per-component breakdown and adjust `RewardConfig` in `reward_signal.py` before retrying
+- [X] T018 [US2] Run: `uv run python eval.py --agent0 agent_v30.py --agent1 agent_v3.py --games 50 --seed 0 --jobs 4 --reward-log rewards_v30_vs_v3.jsonl` — save output
+- [X] T019 [US2] Run inline analysis to verify SC-002: `uv run python -c "import json; games={}; [games.setdefault(r['game_id'],[]).append(r) for r in (json.loads(l) for l in open('rewards_v30_vs_v3.jsonl'))]; wins=sum(1 for g in games.values() if sum(r['total'] for r in g if r['player']==0)>sum(r['total'] for r in g if r['player']==1)); print(f'P0 cumulative reward > P1: {wins}/50 games ({wins*2}%)')"`
+- [X] T020 [US2] Confirm SC-002 passes (≥80% = ≥40/50 games); if it fails, inspect which reward weights are underweighted using per-component breakdown and adjust `RewardConfig` in `reward_signal.py` before retrying
 
 **Checkpoint**: User Story 2 complete — reward shaping validated. ✅
 
@@ -95,15 +95,15 @@
 
 **Independent Test**: `uv run python eval.py --agent0 agent_v31.py --agent1 agent_v30.py --games 50 --seed 0 --jobs 4` → win rate ≥55% (≥28/50).
 
-- [ ] T021 [US4] Create `agent_v31.py` as a copy of `agent_v30.py`; update module docstring to describe the reward-blending mechanic; add `REWARD_ALPHA = 0.3` constant to the config block
-- [ ] T022 [US4] Add `import reward_signal` and a module-level `_prev_obs: dict | None = None` state variable to `agent_v31.py` for tracking the previous observation across turns
-- [ ] T023 [US4] Implement `_reward_estimate(target, source, dispatch_ships)` helper in `agent_v31.py`: estimates expected `capture_bonus` (target.production / CAPTURE_SCALE if we win the attack) and expected `ship_delta` (-dispatch_ships / SHIP_SCALE); returns weighted sum using `W_CAPTURE` and `W_SHIP` imported from `reward_signal`
-- [ ] T024 [US4] Modify the target-scoring loop in `agent_v31.py`: after computing `roi` per (source, target), compute `roi_max` across all candidates; blend score as `(1 - REWARD_ALPHA) * (roi / roi_max) + REWARD_ALPHA * _reward_estimate(target, source, dispatch_ships)` — use blended score for best-target selection
-- [ ] T025 [US4] Update `_prev_obs` at the end of the `agent()` function in `agent_v31.py` so the reward state advances each turn
-- [ ] T026 [US4] Verify SC-007 (zero-blend identical to baseline): temporarily set `REWARD_ALPHA = 0.0` in `agent_v31.py`, run `eval.py --agent0 agent_v31.py --agent1 agent_v30.py --games 20 --seed 0` — confirm win rate is ~50% (statistically indistinguishable from agent_v30 vs itself); restore `REWARD_ALPHA = 0.3`
-- [ ] T027 [US4] Run primary evaluation: `uv run python eval.py --agent0 agent_v31.py --agent1 agent_v30.py --games 50 --seed 0 --jobs 4 --reward-log rewards_v31_vs_v30.jsonl`
-- [ ] T028 [US4] If win rate <55%: try `REWARD_ALPHA` values of 0.1, 0.2, 0.4, 0.5 in separate 20-game runs; keep the first value that passes 55%, or document all as FAIL if none pass
-- [ ] T029 [US4] Write experiment record to `experiments/2026-05-30-reward-signal-baseline.md` following the constitution format (Hypothesis, Change, Self-play result, Conclusion)
+- [X] T021 [US4] Create `agent_v31.py` as a copy of `agent_v30.py`; update module docstring to describe the reward-blending mechanic; add `REWARD_ALPHA = 0.3` constant to the config block
+- [X] T022 [US4] Add `import reward_signal` and a module-level `_prev_obs: dict | None = None` state variable to `agent_v31.py` for tracking the previous observation across turns
+- [X] T023 [US4] Implement `_reward_estimate(target, source, dispatch_ships)` helper in `agent_v31.py`: estimates expected `capture_bonus` (target.production / CAPTURE_SCALE if we win the attack) and expected `ship_delta` (-dispatch_ships / SHIP_SCALE); returns weighted sum using `W_CAPTURE` and `W_SHIP` imported from `reward_signal`
+- [X] T024 [US4] Modify the target-scoring loop in `agent_v31.py`: after computing `roi` per (source, target), compute `roi_max` across all candidates; blend score as `(1 - REWARD_ALPHA) * (roi / roi_max) + REWARD_ALPHA * _reward_estimate(target, source, dispatch_ships)` — use blended score for best-target selection
+- [X] T025 [US4] Update `_prev_obs` at the end of the `agent()` function in `agent_v31.py` so the reward state advances each turn
+- [X] T026 [US4] Verify SC-007 (zero-blend identical to baseline): temporarily set `REWARD_ALPHA = 0.0` in `agent_v31.py`, run `eval.py --agent0 agent_v31.py --agent1 agent_v30.py --games 20 --seed 0` — confirm win rate is ~50% (statistically indistinguishable from agent_v30 vs itself); restore `REWARD_ALPHA = 0.3`
+- [X] T027 [US4] Run primary evaluation: `uv run python eval.py --agent0 agent_v31.py --agent1 agent_v30.py --games 50 --seed 0 --jobs 4 --reward-log rewards_v31_vs_v30.jsonl`
+- [X] T028 [US4] If win rate <55%: try `REWARD_ALPHA` values of 0.1, 0.2, 0.4, 0.5 in separate 20-game runs; keep the first value that passes 55%, or document all as FAIL if none pass
+- [X] T029 [US4] Write experiment record to `experiments/2026-05-30-reward-signal-baseline.md` following the constitution format (Hypothesis, Change, Self-play result, Conclusion)
 
 **Checkpoint**: User Story 4 complete — reward-guided agent experimented and documented. ✅
 
@@ -115,12 +115,12 @@
 
 **Independent Test**: `uv run python reward_analysis.py --log rewards_v30_vs_v3.jsonl > analysis.md` completes in <5s and identifies at least one high-reward pattern (e.g., early expansion by winner).
 
-- [ ] T030 [P] [US5] Create `reward_analysis.py` at repo root with argparse CLI (`--log PATH` required, `--games N` optional, `--player N` optional) and module docstring
-- [ ] T031 [US5] Implement log loading in `reward_analysis.py`: stream-parse `.jsonl` file line by line into a `dict[game_id, list[TurnReward]]` structure; raise clear error if file not found or JSON parse fails
-- [ ] T032 [US5] Implement winner/loser identification in `reward_analysis.py`: for each game, identify winner as the player with `terminal == 1.0` on the final turn (highest terminal reward); handle draws (equal terminal) by marking both as tied
-- [ ] T033 [US5] Implement game-phase bucketing in `reward_analysis.py` (early: steps 1–20, mid: 21–60, late: 61+); compute per-phase averages for `total`, `capture_bonus`, `production_delta`, `ship_delta`, split by winner vs. loser
-- [ ] T034 [US5] Implement Markdown summary output in `reward_analysis.py`: overall section (avg total reward winner vs. loser), per-phase table, and top-5 highest-reward events (game_id, step, player, component, value)
-- [ ] T035 [US5] Run `uv run python reward_analysis.py --log rewards_v30_vs_v3.jsonl` and verify: (a) completes in <5s, (b) summary is readable, (c) winner has higher avg reward than loser in at least 2 of 3 phases
+- [X] T030 [P] [US5] Create `reward_analysis.py` at repo root with argparse CLI (`--log PATH` required, `--games N` optional, `--player N` optional) and module docstring
+- [X] T031 [US5] Implement log loading in `reward_analysis.py`: stream-parse `.jsonl` file line by line into a `dict[game_id, list[TurnReward]]` structure; raise clear error if file not found or JSON parse fails
+- [X] T032 [US5] Implement winner/loser identification in `reward_analysis.py`: for each game, identify winner as the player with `terminal == 1.0` on the final turn (highest terminal reward); handle draws (equal terminal) by marking both as tied
+- [X] T033 [US5] Implement game-phase bucketing in `reward_analysis.py` (early: steps 1–20, mid: 21–60, late: 61+); compute per-phase averages for `total`, `capture_bonus`, `production_delta`, `ship_delta`, split by winner vs. loser
+- [X] T034 [US5] Implement Markdown summary output in `reward_analysis.py`: overall section (avg total reward winner vs. loser), per-phase table, and top-5 highest-reward events (game_id, step, player, component, value)
+- [X] T035 [US5] Run `uv run python reward_analysis.py --log rewards_v30_vs_v3.jsonl` and verify: (a) completes in <5s, (b) summary is readable, (c) winner has higher avg reward than loser in at least 2 of 3 phases
 
 **Checkpoint**: User Story 5 complete — analysis tooling operational. ✅
 
@@ -128,9 +128,9 @@
 
 ## Phase 8: Polish & Cross-Cutting Concerns
 
-- [ ] T036 Update `README.md` Agents table: if `agent_v31` passed ≥55% threshold, add it to the table with its win rate vs. `agent_v30`; bold it if it is the new best local agent
-- [ ] T037 Verify SC-003 (reward logging adds <10% overhead): time `eval.py --games 20` with and without `--reward-log`; confirm overhead is within bound
-- [ ] T038 Remove the `__main__` smoke-test block from `reward_signal.py` (added in T010) so the module is clean for import-only use; confirm `import reward_signal` still works after removal
+- [X] T036 Update `README.md` Agents table: if `agent_v31` passed ≥55% threshold, add it to the table with its win rate vs. `agent_v30`; bold it if it is the new best local agent
+- [X] T037 Verify SC-003 (reward logging adds <10% overhead): time `eval.py --games 20` with and without `--reward-log`; confirm overhead is within bound
+- [X] T038 Remove the `__main__` smoke-test block from `reward_signal.py` (added in T010) so the module is clean for import-only use; confirm `import reward_signal` still works after removal
 
 ---
 
