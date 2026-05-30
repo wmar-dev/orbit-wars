@@ -5,12 +5,13 @@ Runs N games between two agent files and prints per-game results
 and an aggregate win rate to stdout.
 
 Usage:
-    uv run python eval.py [--games N] [--agent0 PATH] [--agent1 PATH] [--verbose]
+    uv run python eval.py [--games N] [--agent0 PATH] [--agent1 PATH] [--verbose] [--jobs N]
 """
 
 import argparse
 import importlib.util
 import math
+import multiprocessing
 
 from kaggle_environments import make
 from kaggle_environments.envs.orbit_wars.orbit_wars import Planet
@@ -72,48 +73,68 @@ def make_verbose_wrapper(inner_agent, label, move_log):
     return wrapped
 
 
-def run_evaluation(agent0_path, agent1_path, num_games, verbose):
-    wins = [0, 0]
-    draws = 0
-
+def _run_game(args):
+    """Run a single game in a worker process. Must be module-level for pickling."""
+    agent0_path, agent1_path, seed, verbose = args
     agent0_fn = load_agent(agent0_path)
     agent1_fn = load_agent(agent1_path)
+    move_log = []
 
-    for game_num in range(1, num_games + 1):
-        seed = game_num - 1
-        move_log = []
+    if verbose:
+        a0 = make_verbose_wrapper(agent0_fn, "P0", move_log)
+        a1 = make_verbose_wrapper(agent1_fn, "P1", move_log)
+    else:
+        a0, a1 = agent0_fn, agent1_fn
 
-        if verbose:
-            a0 = make_verbose_wrapper(agent0_fn, "P0", move_log)
-            a1 = make_verbose_wrapper(agent1_fn, "P1", move_log)
-            env = make("orbit_wars", configuration={"seed": seed}, debug=False)
-            env.run([a0, a1])
-        else:
-            env = make("orbit_wars", configuration={"seed": seed}, debug=False)
-            env.run([agent0_path, agent1_path])
+    env = make("orbit_wars", configuration={"seed": seed}, debug=False)
+    env.run([a0, a1])
 
-        final = env.steps[-1]
-        r0 = final[0].reward or 0.0
-        r1 = final[1].reward or 0.0
+    final = env.steps[-1]
+    r0 = final[0].get("reward") or 0.0
+    r1 = final[1].get("reward") or 0.0
+    return seed, r0, r1, move_log
 
-        if r0 > r1:
-            wins[0] += 1
-            result = "Player 0 wins"
-        elif r1 > r0:
-            wins[1] += 1
-            result = "Player 1 wins"
-        else:
-            draws += 1
-            result = "Draw"
 
-        print(f"Game {game_num} (seed={seed}): {result}  [P0: {r0}  P1: {r1}]")
+def run_evaluation(agent0_path, agent1_path, num_games, verbose, jobs):
+    wins = [0, 0]
+    draws = 0
+    game_args = [(agent0_path, agent1_path, s, verbose) for s in range(num_games)]
 
-        if verbose and move_log:
-            # Print first 10 moves from each agent to show strategy difference.
-            p0_moves = [m for m in move_log if "[P0]" in m][:5]
-            p1_moves = [m for m in move_log if "[P1]" in m][:5]
-            for line in p0_moves + p1_moves:
-                print(line)
+    pool = None
+    if jobs > 1:
+        pool = multiprocessing.Pool(processes=min(jobs, num_games))
+        results = pool.imap_unordered(_run_game, game_args)
+    else:
+        results = (_run_game(a) for a in game_args)
+
+    pending = {}
+    next_to_print = 0
+
+    for seed, r0, r1, move_log in results:
+        pending[seed] = (r0, r1, move_log)
+        while next_to_print in pending:
+            r0, r1, move_log = pending.pop(next_to_print)
+            game_num = next_to_print + 1
+            if r0 > r1:
+                wins[0] += 1
+                result = "Player 0 wins"
+            elif r1 > r0:
+                wins[1] += 1
+                result = "Player 1 wins"
+            else:
+                draws += 1
+                result = "Draw"
+            print(f"Game {game_num} (seed={next_to_print}): {result}  [P0: {r0}  P1: {r1}]")
+            if verbose and move_log:
+                p0_moves = [m for m in move_log if "[P0]" in m][:5]
+                p1_moves = [m for m in move_log if "[P1]" in m][:5]
+                for line in p0_moves + p1_moves:
+                    print(line)
+            next_to_print += 1
+
+    if pool is not None:
+        pool.close()
+        pool.join()
 
     print()
     print(f"--- Results ({num_games} games) ---")
@@ -130,9 +151,10 @@ def main():
     parser.add_argument("--agent0", default="agent_v2.py", help="Path to agent under test")
     parser.add_argument("--agent1", default="main.py", help="Path to baseline agent")
     parser.add_argument("--verbose", action="store_true", help="Print per-turn move details")
+    parser.add_argument("--jobs", type=int, default=1, help="Parallel worker processes (default: 1)")
     args = parser.parse_args()
 
-    run_evaluation(args.agent0, args.agent1, args.games, args.verbose)
+    run_evaluation(args.agent0, args.agent1, args.games, args.verbose, args.jobs)
 
 
 if __name__ == "__main__":
