@@ -1,50 +1,91 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+SYNC IMPACT REPORT
+==================
+Version change: N/A → 1.0.0 (initial ratification)
+Added sections:
+  - Core Principles (5 principles)
+  - Experiment & Documentation Discipline
+  - Development Workflow
+  - Governance
+Modified principles: N/A (initial)
+Removed sections: N/A (initial)
+Templates requiring updates:
+  - .specify/templates/plan-template.md ✅ no changes needed (template is generic)
+  - .specify/templates/spec-template.md ✅ no changes needed (template is generic)
+  - .specify/templates/tasks-template.md ✅ no changes needed (template is generic)
+Follow-up TODOs: none
+-->
+
+# Orbit Wars Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Reinforcement Learning First
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+The agent MUST be trained and improved primarily through reinforcement learning via local
+self-play. Heuristic rule-based logic is acceptable as a baseline or opponent seed, but
+the primary path to improvement is a learned policy. Training MUST run locally against
+self-play opponents — do not rely on online evaluation as the signal for iteration.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Fair Play & Rules Compliance
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+The agent MUST operate within the official Kaggle Orbit Wars rules at all times. Exploiting
+engine bugs, timing loopholes, or undefined behavior is forbidden. The agent MUST respect
+the `actTimeout` budget (1 second/turn) and MUST NOT attempt to probe or interfere with
+opponent agents outside the game observation. Play to win within the rules, not around them.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. Manual Submissions Only
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Kaggle submissions MUST be made manually and deliberately. No automated or scripted
+submission pipelines are permitted. Before each submission, the submitter MUST confirm
+the agent version being submitted and record it in the experiment log. Accidental or
+test submissions MUST be noted in the log with a rationale.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Experiment & Improvement Documentation
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Every meaningful training run, architecture change, reward shaping decision, or strategy
+hypothesis MUST be documented before or immediately after the experiment. Documentation
+MUST include: the hypothesis, the change made, the self-play result (win rate or score
+delta), and a conclusion. Undocumented experiments MUST NOT be submitted to Kaggle.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Local Self-Play as the Primary Evaluation Loop
+
+Agent strength MUST be assessed through local self-play before any Kaggle submission.
+New agent versions MUST beat (or statistically tie) the previous best local agent in
+at least 20 self-play games before being considered for submission. The Kaggle leaderboard
+is a lagging signal — local self-play is the ground truth for iteration.
+
+## Experiment & Documentation Discipline
+
+All experiment records MUST be stored in a `experiments/` directory at the project root.
+Each experiment MUST have its own dated file or entry (e.g., `experiments/2026-05-29-ppo-baseline.md`).
+Required fields per experiment:
+
+- **Hypothesis**: What improvement is expected and why.
+- **Change**: What was modified (model arch, reward, hyperparameters, strategy).
+- **Self-play result**: Win rate vs. previous best agent over ≥20 games.
+- **Conclusion**: Did it improve? What was learned? Keep or discard?
+
+Submissions to Kaggle MUST reference the experiment entry that validated the submitted agent.
+
+## Development Workflow
+
+1. Develop and test changes locally using the Makefile (`make test`, `make selfplay`).
+2. Document the experiment before or immediately after running self-play evaluation.
+3. If self-play shows improvement (≥20 game sample, consistent win rate > 50% vs. prior best),
+   tag the agent version and manually submit to Kaggle.
+4. Record the submission outcome (leaderboard score, rank delta) back in the experiment log.
+5. Never submit directly from a Jupyter notebook without first exporting a clean agent script.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other informal practices or undocumented conventions.
+Amendments require updating this file with a version bump and a rationale comment.
+All implementation plans and task lists MUST include a Constitution Check gate that
+verifies compliance with Principles I–V before proceeding.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+- MAJOR bump: Removal or redefinition of a core principle (e.g., dropping RL-first, allowing auto-submit).
+- MINOR bump: Addition of a new principle or material expansion of an existing one.
+- PATCH bump: Clarifications, wording, or non-semantic refinements.
+
+**Version**: 1.0.0 | **Ratified**: 2026-05-29 | **Last Amended**: 2026-05-29
