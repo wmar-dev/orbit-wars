@@ -29,7 +29,12 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v12.py` | + Garrison sizing with floor (Candidate B) | 0% vs v10 (20 games) — FAIL |
 | `agent_v13.py` | + Threat-aware defense (Candidate C) | 10% vs v10 (20 games) — FAIL |
 | `agent_v14.py` | + Single-sender coordination (Candidate D) | 70% vs v10 (20 games) |
-| **`agent_v15.py`** | **Combined: single-sender coordination (only passing mechanic from v11–v14)** | **70% vs v10 (20 games), 0 sun/OOB losses** |
+| `agent_v15.py` | Combined: single-sender coordination (only passing mechanic from v11–v14) | 70% vs v10 (20 games), 0 sun/OOB losses |
+| `agent_v16.py` | + Speed-corrected orbit lead (Candidate E) | 70% vs v15 (20 games) |
+| `agent_v17.py` | + Transit-adjusted fleet sizing (Candidate F) | 15% vs v15 (20 games) — FAIL |
+| `agent_v18.py` | + Adaptive range expansion (Candidate G) | 0% vs v15 (20 games) — FAIL |
+| `agent_v19.py` | + Capture-ROI scoring (Candidate H) | 60% vs v15 (20 games) |
+| **`agent_v20.py`** | **Combined: speed-corrected orbit lead + capture-ROI scoring** | **75% vs v15 (20 games), 0 sun/OOB losses** |
 
 ## How It Works
 
@@ -61,7 +66,9 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 
 **`agent_v14.py`** (Candidate D — PASS): Adds single-sender coordination — for each target, only the planet with the best `distance / available_surplus` efficiency score may launch; all others redirect to different targets. Achieves 70% win rate vs v10. Spreading attack vectors across the map decisively outperforms uncoordinated multi-sender pile-ons.
 
-**`agent_v15.py`** (Combined — current best): Stacks all mechanics that passed ≥55% vs agent_v10. Only Candidate D passed; agent_v15 is functionally equivalent to agent_v14. Achieves 70% win rate vs agent_v10 with 0 sun losses and 0 OOB losses across 20 diagnostic games.
+**`agent_v15.py`**: Stacks all mechanics that passed ≥55% vs agent_v10. Only Candidate D passed; agent_v15 is functionally equivalent to agent_v14. Achieves 70% win rate vs agent_v10 with 0 sun losses and 0 OOB losses across 20 diagnostic games.
+
+**`agent_v20.py`** (Combined — current best): Fixes the orbit-lead speed bug (fleet travel time was computed from source planet's full ship count, not the actual launched fleet size) and adds ROI-based target scoring. Achieves 75% win rate vs agent_v15 with 0 sun/OOB losses across 20 diagnostic games.
 
 See [specs/003-agent-gap-analysis/](specs/003-agent-gap-analysis/) for the full design documents and [experiments/](experiments/) for per-experiment results.
 
