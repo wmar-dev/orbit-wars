@@ -73,6 +73,18 @@ make status
 make leaderboard
 ```
 
+## Visualization
+
+The notebook renderer uses the Wong colorblind-safe palette:
+
+| Player | Color | Hex |
+| --- | --- | --- |
+| Player 0 | Blue | `#0072B2` |
+| Player 1 | Vermillion | `#D55E00` |
+| Player 2 | Teal | `#009E73` |
+| Player 3 | Yellow | `#F0E442` |
+| Neutral | Grey | `#888888` |
+
 ## Game Rules
 
 See [CONTEST.md](CONTEST.md) for full game rules and [agents.md](agents.md) for the getting-started guide.
