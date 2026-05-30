@@ -35,6 +35,15 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v18.py` | + Adaptive range expansion (Candidate G) | 0% vs v15 (20 games) — FAIL |
 | `agent_v19.py` | + Capture-ROI scoring (Candidate H) | 60% vs v15 (20 games) |
 | **`agent_v20.py`** | **Combined: speed-corrected orbit lead + capture-ROI scoring** | **75% vs v15 (20 games), 0 sun/OOB losses** |
+| `agent_v21.py` | + Reactive defense dispatch (Candidate I) | 5% score vs v20 (20 games) — FAIL |
+| `agent_v22.py` | + Smooth adaptive range (Candidate J) | 50% score vs v20 (20 games, 20 draws) — FAIL |
+| `agent_v23.py` | + Enemy-territory priority when winning (Candidate K) | 50% score vs v20 (20 games, 20 draws) — FAIL |
+| `agent_v24.py` | + Two-source coordinated attack (Candidate L) | 40% score vs v20 (20 games) — FAIL |
+| `agent_v26.py` | + Lower garrison floor factor 5→3 (Candidate O) | 55% score vs v20 (20 games) |
+| `agent_v27.py` | + 3-iteration orbit lead (Candidate P) | 20% score vs v20 (20 games) — FAIL |
+| `agent_v28.py` | + No range limit on targets (Candidate Q) | 70% score vs v20 (20 games) |
+| `agent_v29.py` | + Production-squared ROI (Candidate R) | 45% score vs v20 (20 games) — FAIL |
+| **`agent_v30.py`** | **Combined: lower garrison floor + no range limit** | **75% score vs v20 (20 games), 100% 4P win rate, 0 sun/OOB losses** |
 
 ## How It Works
 
