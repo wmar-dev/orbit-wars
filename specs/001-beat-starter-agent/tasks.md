@@ -19,8 +19,8 @@
 
 **Purpose**: Project initialization and directory structure
 
-- [ ] T001 Create `experiments/` directory at project root
-- [ ] T002 [P] Create experiment log skeleton at `experiments/2026-05-29-production-weighted-baseline.md` with required fields: Hypothesis, Change, Self-play result, Conclusion (required by Constitution Principle IV before any Kaggle submission)
+- [x] T001 Create `experiments/` directory at project root
+- [x] T002 [P] Create experiment log skeleton at `experiments/2026-05-29-production-weighted-baseline.md` with required fields: Hypothesis, Change, Self-play result, Conclusion (required by Constitution Principle IV before any Kaggle submission)
 
 **Checkpoint**: Experiment log skeleton in place — constitution gate satisfied
 
@@ -32,8 +32,8 @@
 
 **⚠️ CRITICAL**: Must be complete before user story phases begin
 
-- [ ] T003 Create `agent_v2.py` at project root with the module docstring, imports (`math`, `Planet` from `kaggle_environments.envs.orbit_wars.orbit_wars`), and the empty `agent(obs)` function signature — no logic yet
-- [ ] T004 Create `eval.py` at project root with imports (`argparse`, `importlib.util`, `kaggle_environments.make`) and the CLI argument parser (`--games`, `--agent0`, `--agent1`) — no game loop yet
+- [x] T003 Create `agent_v2.py` at project root with the module docstring, imports (`math`, `Planet` from `kaggle_environments.envs.orbit_wars.orbit_wars`), and the empty `agent(obs)` function signature — no logic yet
+- [x] T004 Create `eval.py` at project root with imports (`argparse`, `importlib.util`, `kaggle_environments.make`) and the CLI argument parser (`--games`, `--agent0`, `--agent1`) — no game loop yet
 
 **Checkpoint**: Both files exist and are importable; foundation ready for story implementation
 
@@ -47,13 +47,13 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] In `agent_v2.py`, implement turn-level planet filtering: parse `obs` with dict/attribute fallback, build `my_planets` (owner == player) and `targets` (owner != player) lists — early return `[]` if either list is empty
-- [ ] T006 [US1] In `agent_v2.py`, implement the `score_target(mine, target)` inline expression: `target.production / math.hypot(target.x - mine.x, target.y - mine.y)` — guard against zero distance with a small epsilon
-- [ ] T007 [US1] In `agent_v2.py`, implement the main per-planet targeting loop: for each owned planet, find the highest-scoring target using the scoring expression, check `mine.ships >= target.ships + 1`, compute `math.atan2` angle, append `[mine.id, angle, target.ships + 1]` to moves
-- [ ] T008 [US1] Smoke-test `agent_v2.py` against `random` using `make test AGENT=agent_v2.py` — confirm no exceptions and a non-zero move list on most turns
-- [ ] T009 [US1] In `eval.py`, implement the game loop: for each seed in `range(games)`, call `env.make('orbit_wars', configuration={'seed': seed})`, `env.run([agent0_path, agent1_path])`, extract final rewards from `env.steps[-1]`, determine winner (higher reward wins; equal = draw), print per-game result line per the contract in `contracts/agent-interface.md`
-- [ ] T010 [US1] In `eval.py`, implement the summary block: count wins/draws, compute win rate, print the formatted summary matching the contract output format
-- [ ] T011 [US1] Run `uv run python eval.py --games 10` and verify win rate ≥70%; if below threshold, revisit T007 scoring logic before proceeding
+- [x] T005 [US1] In `agent_v2.py`, implement turn-level planet filtering: parse `obs` with dict/attribute fallback, build `my_planets` (owner == player) and `targets` (owner != player) lists — early return `[]` if either list is empty
+- [x] T006 [US1] In `agent_v2.py`, implement the `score_target(mine, target)` inline expression: `target.production / math.hypot(target.x - mine.x, target.y - mine.y)` — guard against zero distance with a small epsilon
+- [x] T007 [US1] In `agent_v2.py`, implement the main per-planet targeting loop: for each owned planet, find the highest-scoring target using the scoring expression, check `mine.ships >= target.ships + 1`, compute `math.atan2` angle, append `[mine.id, angle, target.ships + 1]` to moves
+- [x] T008 [US1] Smoke-test `agent_v2.py` against `random` using `make test AGENT=agent_v2.py` — confirm no exceptions and a non-zero move list on most turns
+- [x] T009 [US1] In `eval.py`, implement the game loop: for each seed in `range(games)`, call `env.make('orbit_wars', configuration={'seed': seed})`, `env.run([agent0_path, agent1_path])`, extract final rewards from `env.steps[-1]`, determine winner (higher reward wins; equal = draw), print per-game result line per the contract in `contracts/agent-interface.md`
+- [x] T010 [US1] In `eval.py`, implement the summary block: count wins/draws, compute win rate, print the formatted summary matching the contract output format
+- [x] T011 [US1] Run `uv run python eval.py --games 10` and verify win rate ≥70%; if below threshold, revisit T007 scoring logic before proceeding
 
 **Checkpoint**: US1 complete — `agent_v2.py` beats `main.py` ≥7/10 games; `eval.py` prints correct results
 
@@ -67,8 +67,8 @@
 
 ### Implementation for User Story 2
 
-- [ ] T012 [P] [US2] Add `--verbose` flag to `eval.py` that, when set, prints each move as `Turn N | Planet {id} → Target {id} (score={score:.3f}, ships={n})` so strategy differences are visible without a full replay render
-- [ ] T013 [US2] In `agent_v2.py`, add a `__name__ == '__main__'` block that runs a single game against `main.py` with seed 42 and renders it via `env.render(mode='ipython')` — for use in `getting-started.ipynb` if desired (does not affect agent logic)
+- [x] T012 [P] [US2] Add `--verbose` flag to `eval.py` that, when set, prints each move as `Turn N | Planet {id} → Target {id} (score={score:.3f}, ships={n})` so strategy differences are visible without a full replay render
+- [x] T013 [US2] In `agent_v2.py`, add a `__name__ == '__main__'` block that runs a single game against `main.py` with seed 42 and renders it via `env.render(mode='ipython')` — for use in `getting-started.ipynb` if desired (does not affect agent logic)
 
 **Checkpoint**: US2 complete — verbose mode surfaces the targeting decisions; strategy difference observable
 
@@ -82,9 +82,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T014 [P] [US3] In `eval.py`, implement agent loading via `importlib.util.spec_from_file_location` + `module_from_spec` so `--agent0` and `--agent1` accept arbitrary file paths and the loaded `agent` function is passed to `env.run()`
-- [ ] T015 [US3] Add a `Makefile` target `eval` that runs `uv run python eval.py --agent0 agent_v2.py --agent1 main.py --games 10` for convenience
-- [ ] T016 [US3] Time the full 10-game run with `time uv run python eval.py --games 10` and confirm <60s; if over budget, reduce per-game overhead (e.g., disable debug logging in env.make)
+- [x] T014 [P] [US3] In `eval.py`, implement agent loading via `importlib.util.spec_from_file_location` + `module_from_spec` so `--agent0` and `--agent1` accept arbitrary file paths and the loaded `agent` function is passed to `env.run()`
+- [x] T015 [US3] Add a `Makefile` target `eval` that runs `uv run python eval.py --agent0 agent_v2.py --agent1 main.py --games 10` for convenience
+- [x] T016 [US3] Time the full 10-game run with `time uv run python eval.py --games 10` and confirm <60s; if over budget, reduce per-game overhead (e.g., disable debug logging in env.make)
 
 **Checkpoint**: US3 complete — single command runs full eval; any two agent files can be compared without code edits
 
@@ -94,10 +94,10 @@
 
 **Purpose**: Experiment log, Makefile integration, readability review
 
-- [ ] T017 Fill in `experiments/2026-05-29-production-weighted-baseline.md` with actual self-play results from T011: hypothesis, change made, win rate over 10 games, conclusion — required by Constitution Principle IV before any Kaggle submission
-- [ ] T018 [P] Add `selfplay` Makefile target: `uv run python eval.py --agent0 agent_v2.py --agent1 agent_v2.py --games 10` for symmetric self-play baseline
-- [ ] T019 [P] Review `agent_v2.py` for readability: variable names match the domain model (`mine`, `target`, `score`, `angle`), no nested comprehensions in inner loop, epsilon guard is named `EPSILON` constant at module level
-- [ ] T020 Update `specs/001-beat-starter-agent/checklists/requirements.md` — mark all items complete now that implementation is done
+- [x] T017 Fill in `experiments/2026-05-29-production-weighted-baseline.md` with actual self-play results from T011: hypothesis, change made, win rate over 10 games, conclusion — required by Constitution Principle IV before any Kaggle submission
+- [x] T018 [P] Add `selfplay` Makefile target: `uv run python eval.py --agent0 agent_v2.py --agent1 agent_v2.py --games 10` for symmetric self-play baseline
+- [x] T019 [P] Review `agent_v2.py` for readability: variable names match the domain model (`mine`, `target`, `score`, `angle`), no nested comprehensions in inner loop, epsilon guard is named `EPSILON` constant at module level
+- [x] T020 Update `specs/001-beat-starter-agent/checklists/requirements.md` — mark all items complete now that implementation is done
 
 ---
 

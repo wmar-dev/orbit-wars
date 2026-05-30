@@ -1,2 +1,15 @@
 .DS_Store
 .ipynb_checkpoints/
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+dist/
+*.egg-info/
+*.tmp
+*.swp
+.vscode/
+.idea/
+replays/
+logs/
