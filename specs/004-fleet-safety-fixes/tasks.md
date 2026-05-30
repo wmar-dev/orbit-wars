@@ -17,8 +17,8 @@
 
 **Purpose**: Create output directories and the experiment record required by the constitution before any code is written.
 
-- [ ] T001 Create `logs/` directory at repo root (if it does not exist)
-- [ ] T002 Create experiment record `experiments/2026-05-30-fleet-safety-v10.md` with hypothesis, change list, and placeholder result fields (Constitution IV gate)
+- [x] T001 Create `logs/` directory at repo root (if it does not exist)
+- [x] T002 Create experiment record `experiments/2026-05-30-fleet-safety-v10.md` with hypothesis, change list, and placeholder result fields (Constitution IV gate)
 
 **Checkpoint**: `logs/` exists; experiment record drafted — implementation may begin.
 
@@ -28,12 +28,12 @@
 
 **Purpose**: Build the shared diagnostic infrastructure that all user stories depend on.
 
-- [ ] T003 Create `diagnose_v9.py` at repo root with CLI argument parsing (`--games`, `--agent`, `--seed-start`, `--jobs`) matching `eval.py` conventions
-- [ ] T004 Implement `LaunchRecord` dataclass in `diagnose_v9.py` with fields: `game_seed`, `turn_launched`, `fleet_id`, `source_id`, `target_id`, `aimed_x`, `aimed_y`, `ships`, `outcome`, `turn_resolved`
-- [ ] T005 Implement agent wrapper in `diagnose_v9.py` that intercepts `agent(obs)` calls and logs every fleet launch to an in-memory list of `LaunchRecord`
-- [ ] T006 Implement fleet-tracking logic in `diagnose_v9.py`: each turn, compare current fleet list to prior turn's fleet list to detect fleet disappearances, recording `turn_resolved`
-- [ ] T007 Implement outcome inference in `diagnose_v9.py`: when a fleet disappears, check target planet ownership/garrison delta — if changed → `captured`; if not → `transit_loss`; if ambiguous → `unknown`
-- [ ] T008 Implement CSV writer in `diagnose_v9.py` that writes one file per run to `logs/diagnose_<agent>_<seed_start>_<games>.csv`
+- [x] T003 Create `diagnose_v9.py` at repo root with CLI argument parsing (`--games`, `--agent`, `--seed-start`, `--jobs`) matching `eval.py` conventions
+- [x] T004 Implement `LaunchRecord` dataclass in `diagnose_v9.py` with fields: `game_seed`, `turn_launched`, `fleet_id`, `source_id`, `target_id`, `aimed_x`, `aimed_y`, `ships`, `outcome`, `turn_resolved`
+- [x] T005 Implement agent wrapper in `diagnose_v9.py` that intercepts `agent(obs)` calls and logs every fleet launch to an in-memory list of `LaunchRecord`
+- [x] T006 Implement fleet-tracking logic in `diagnose_v9.py`: each turn, compare current fleet list to prior turn's fleet list to detect fleet disappearances, recording `turn_resolved`
+- [x] T007 Implement outcome inference in `diagnose_v9.py`: when a fleet disappears, check target planet ownership/garrison delta — if changed → `captured`; if not → `transit_loss`; if ambiguous → `unknown`
+- [x] T008 Implement CSV writer in `diagnose_v9.py` that writes one file per run to `logs/diagnose_<agent>_<seed_start>_<games>.csv`
 
 **Checkpoint**: `diagnose_v9.py` is runnable end-to-end and produces a CSV in `logs/`.
 
@@ -45,9 +45,9 @@
 
 **Independent Test**: Run `uv run python diagnose_v9.py --games 20 --agent agent_v9.py` and verify a CSV is written to `logs/` with `outcome` populated for every launched fleet.
 
-- [ ] T009 [US1] Wire `diagnose_v9.py` main loop: instantiate the agent wrapper, run N games via `kaggle_environments.make`, collect `LaunchRecord` lists, write CSV after each game
-- [ ] T010 [US1] Add summary printout at end of `diagnose_v9.py` run: total launches, count per outcome type, transit_loss percentage
-- [ ] T011 [US1] Run `uv run python diagnose_v9.py --games 20 --agent agent_v9.py --jobs 4` and record baseline results in `experiments/2026-05-30-fleet-safety-v10.md` under "Baseline (agent_v9)"
+- [x] T009 [US1] Wire `diagnose_v9.py` main loop: instantiate the agent wrapper, run N games via `kaggle_environments.make`, collect `LaunchRecord` lists, write CSV after each game
+- [x] T010 [US1] Add summary printout at end of `diagnose_v9.py` run: total launches, count per outcome type, transit_loss percentage
+- [x] T011 [US1] Run `uv run python diagnose_v9.py --games 20 --agent agent_v9.py --jobs 4` and record baseline results in `experiments/2026-05-30-fleet-safety-v10.md` under "Baseline (agent_v9)"
 
 **Checkpoint**: Baseline numbers recorded — proportion of wasted fleet quantified for agent_v9.
 
@@ -59,8 +59,8 @@
 
 **Independent Test**: Run head-to-head and verify `transit_loss` rate attributed to sun is 0% in diagnose output for agent_v10.
 
-- [ ] T012 [P] [US2] Create `agent_v10.py` at repo root as a copy of `agent_v9.py` — this is the base for all subsequent fixes
-- [ ] T013 [US2] In `agent_v10.py`, audit `_path_safe(ox, oy, tx, ty)` — confirm the full-ray sun check from v9 is intact and correct; add an inline comment confirming it checks to the board edge via `_ray_exits_board`
+- [x] T012 [P] [US2] Create `agent_v10.py` at repo root as a copy of `agent_v9.py` — this is the base for all subsequent fixes
+- [x] T013 [US2] In `agent_v10.py`, audit `_path_safe(ox, oy, tx, ty)` — confirm the full-ray sun check from v9 is intact and correct; add an inline comment confirming it checks to the board edge via `_ray_exits_board`
 
 **Checkpoint**: Sun-avoidance logic confirmed correct in agent_v10 — no regression from v9.
 
@@ -72,8 +72,8 @@
 
 **Independent Test**: Verify no launched fleet in the diagnose output for agent_v10 has `aimed_x` or `aimed_y` outside [0, 100].
 
-- [ ] T014 [US3] In `agent_v10.py`, audit the `0 <= tx <= BOARD_SIZE and 0 <= ty <= BOARD_SIZE` guard in `_path_safe` — confirm it rejects boundary-exactly-100 positions correctly (use strict inequalities or confirm inclusive boundary is safe per CONTEST.md)
-- [ ] T015 [US3] In `agent_v10.py`, fix comet path index access: replace `future_idx = int(path_index + travel_turns)` with `future_idx = min(int(path_index + travel_turns), len(path) - 1)` in both the candidate loop and the fallback loop; add `if not path: continue` guard before index access
+- [x] T014 [US3] In `agent_v10.py`, audit the `0 <= tx <= BOARD_SIZE and 0 <= ty <= BOARD_SIZE` guard in `_path_safe` — confirm it rejects boundary-exactly-100 positions correctly (use strict inequalities or confirm inclusive boundary is safe per CONTEST.md)
+- [x] T015 [US3] In `agent_v10.py`, fix comet path index access: replace `future_idx = int(path_index + travel_turns)` with `future_idx = min(int(path_index + travel_turns), len(path) - 1)` in both the candidate loop and the fallback loop; add `if not path: continue` guard before index access
 
 **Checkpoint**: OOB guards and comet index clamping confirmed in agent_v10.
 
@@ -85,10 +85,10 @@
 
 **Independent Test**: Manually verify that a launch from a planet whose straight-line path to a target would pass through another orbiting planet is correctly rejected in the candidate selection loop.
 
-- [ ] T016 [P] [US4] In `agent_v10.py`, add constant `PLANET_MARGIN = 1.0` alongside `SUN_EXCLUSION`
-- [ ] T017 [US4] In `agent_v10.py`, update `_path_safe(ox, oy, tx, ty)` signature to `_path_safe(ox, oy, tx, ty, all_planets=None, target_id=None)` — existing callers use default `None` and are unaffected
-- [ ] T018 [US4] In `agent_v10.py`, inside `_path_safe`, after the existing sun check, add loop: for each planet in `all_planets` (skip if `planet.id == target_id`), compute `_segment_dist_to_sun`-style distance from the full ray to that planet's center; return `False` if distance < `planet.radius + PLANET_MARGIN`
-- [ ] T019 [US4] In `agent_v10.py`, update every `_path_safe(...)` call site in `agent()` to pass `all_planets=planets` and `target_id=t.id` — covers the candidate loop, the fallback loop, and the evacuate-comet branch
+- [x] T016 [P] [US4] In `agent_v10.py`, add constant `PLANET_MARGIN = 1.0` alongside `SUN_EXCLUSION`
+- [x] T017 [US4] In `agent_v10.py`, update `_path_safe(ox, oy, tx, ty)` signature to `_path_safe(ox, oy, tx, ty, all_planets=None, target_id=None)` — existing callers use default `None` and are unaffected
+- [x] T018 [US4] In `agent_v10.py`, inside `_path_safe`, after the existing sun check, add loop: for each planet in `all_planets` (skip if `planet.id == target_id`), compute `_segment_dist_to_sun`-style distance from the full ray to that planet's center; return `False` if distance < `planet.radius + PLANET_MARGIN`
+- [x] T019 [US4] In `agent_v10.py`, update every `_path_safe(...)` call site in `agent()` to pass `all_planets=planets` and `target_id=t.id` — covers the candidate loop, the fallback loop, and the evacuate-comet branch
 
 **Checkpoint**: `_path_safe` now checks all intermediate planets. agent_v10 candidate selection rejects paths blocked by any planet.
 
@@ -100,8 +100,8 @@
 
 **Independent Test**: Run diagnose on agent_v10 and verify `transit_loss` rate drops versus the agent_v9 baseline; orbit-lead intercept accuracy improves by ≥10 percentage points.
 
-- [ ] T020 [US4] In `agent_v10.py`, in the candidate loop for non-comet orbiting planets, replace the single `travel_turns = dist / fleet_speed(mine.ships + 1)` estimate with a one-step refinement: compute `t0`, predict planet pos at `t0`, recompute distance to predicted pos, compute `t1`, then use `_predict_planet_pos(..., t1)` as the final `(x_pred, y_pred)`
-- [ ] T021 [US4] Apply the same one-step refinement in the fallback loop for non-comet orbiting planets in `agent_v10.py`
+- [x] T020 [US4] In `agent_v10.py`, in the candidate loop for non-comet orbiting planets, replace the single `travel_turns = dist / fleet_speed(mine.ships + 1)` estimate with a one-step refinement: compute `t0`, predict planet pos at `t0`, recompute distance to predicted pos, compute `t1`, then use `_predict_planet_pos(..., t1)` as the final `(x_pred, y_pred)`
+- [x] T021 [US4] Apply the same one-step refinement in the fallback loop for non-comet orbiting planets in `agent_v10.py`
 
 **Checkpoint**: Orbit-lead intercept uses refined travel time in both candidate and fallback loops.
 
@@ -111,11 +111,11 @@
 
 **Purpose**: Run the head-to-head evaluation, record results, update README and experiment log.
 
-- [ ] T022 Run `uv run python diagnose_v9.py --games 20 --agent agent_v10.py --jobs 4` and record agent_v10 baseline numbers in `experiments/2026-05-30-fleet-safety-v10.md` under "Fixed Agent (agent_v10)"
-- [ ] T023 Run `uv run python eval.py --games 20 --agent0 agent_v10.py --agent1 agent_v9.py --jobs 4` and record head-to-head win rate in `experiments/2026-05-30-fleet-safety-v10.md`
-- [ ] T024 Verify SC-002 (0% sun losses), SC-003 (0% OOB losses), SC-004 (≥10pp intercept improvement), SC-005 (≥75% win rate vs v9) — document pass/fail in experiment record
-- [ ] T025 Update `README.md` Agents table to include agent_v10 with win rates (bold if best agent)
-- [ ] T026 [P] Add `if __name__ == "__main__":` block to `agent_v10.py` matching v9's self-test pattern
+- [x] T022 Run `uv run python diagnose_v9.py --games 20 --agent agent_v10.py --jobs 4` and record agent_v10 baseline numbers in `experiments/2026-05-30-fleet-safety-v10.md` under "Fixed Agent (agent_v10)"
+- [x] T023 Run `uv run python eval.py --games 20 --agent0 agent_v10.py --agent1 agent_v9.py --jobs 4` and record head-to-head win rate in `experiments/2026-05-30-fleet-safety-v10.md`
+- [x] T024 Verify SC-002 (0% sun losses), SC-003 (0% OOB losses), SC-004 (≥10pp intercept improvement), SC-005 (≥75% win rate vs v9) — document pass/fail in experiment record
+- [x] T025 Update `README.md` Agents table to include agent_v10 with win rates (bold if best agent)
+- [x] T026 [P] Add `if __name__ == "__main__":` block to `agent_v10.py` matching v9's self-test pattern
 
 ---
 

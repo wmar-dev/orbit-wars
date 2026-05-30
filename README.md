@@ -23,7 +23,8 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v6.py` | + Defensive reinforcement | 20% (20 games) — FAIL |
 | `agent_v7.py` | + Fleet-speed scoring + fast-fleet send | 50% (20 games) — FAIL |
 | `agent_v8.py` | Combined: orbit-lead + comet | 90% (20 games) |
-| **`agent_v9.py`** | **+ Fleet path safety fix (full-ray sun check + OOB guard)** | **94% vs main.py (50 games), 70% vs v8** |
+| `agent_v9.py` | + Fleet path safety fix (full-ray sun check + OOB guard) | 94% vs main.py (50 games), 70% vs v8 |
+| **`agent_v10.py`** | **+ Intermediate planet obstruction check + orbit-lead refinement** | **85% vs v9 (20 games)** |
 
 ## How It Works
 
@@ -44,6 +45,8 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 **`agent_v8.py`**: Combines orbit-lead (v4) and comet opportunism (v5) — the two mechanics that individually passed ≥55%. Achieves 90% win rate vs agent_v3, confirmed across two 20-game runs.
 
 **`agent_v9.py`**: Fixes two fleet path safety bugs in v8: (1) sun-avoidance check now covers the full ray to the board edge instead of just source→predicted_target; (2) predicted positions outside the 100×100 board are rejected. Achieves 94% vs main.py and 70% head-to-head vs v8 (50 games each).
+
+**`agent_v10.py`**: Adds intermediate planet obstruction check — `_path_safe` now rejects any launch whose source→target segment passes within `planet.radius + 1.0` of any non-source, non-target planet, preventing fleets from being captured mid-flight. Also refines orbit-lead travel time with one iteration of correction (predict at t0, recompute to predicted pos, use t1), and adds comet path index clamping. Achieves 85% head-to-head win rate vs agent_v9 (20 games).
 
 See [specs/003-agent-gap-analysis/](specs/003-agent-gap-analysis/) for the full design documents and [experiments/](experiments/) for per-experiment results.
 
