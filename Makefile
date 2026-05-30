@@ -44,22 +44,22 @@ selfplay:
 	$(UV) run python eval.py --agent0 agent_v2.py --agent1 agent_v2.py --games 10
 
 submit:
-	kaggle competitions submit $(COMPETITION) -f $(AGENT) -m $(MESSAGE)
+	uvx kaggle competitions submit $(COMPETITION) -f $(AGENT) -m "$(MESSAGE)"
 
 status:
-	kaggle competitions submissions $(COMPETITION)
+	uvx kaggle competitions submissions $(COMPETITION)
 
 episodes:
 	@test -n "$(SUBMISSION_ID)" || (echo "Error: SUBMISSION_ID is required. Usage: make episodes SUBMISSION_ID=<id>" && exit 1)
-	kaggle competitions episodes $(SUBMISSION_ID)
+	uvx kaggle competitions episodes $(SUBMISSION_ID)
 
 replay:
 	@test -n "$(EPISODE_ID)" || (echo "Error: EPISODE_ID is required. Usage: make replay EPISODE_ID=<id>" && exit 1)
-	kaggle competitions replay $(EPISODE_ID) -p ./replays
+	uvx kaggle competitions replay $(EPISODE_ID) -p ./replays
 
 logs:
 	@test -n "$(EPISODE_ID)" || (echo "Error: EPISODE_ID is required. Usage: make logs EPISODE_ID=<id>" && exit 1)
-	kaggle competitions logs $(EPISODE_ID) 0 -p ./logs
+	uvx kaggle competitions logs $(EPISODE_ID) 0 -p ./logs
 
 leaderboard:
-	kaggle competitions leaderboard $(COMPETITION) -s
+	uvx kaggle competitions leaderboard $(COMPETITION) -s
