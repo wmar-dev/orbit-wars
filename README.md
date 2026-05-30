@@ -22,7 +22,8 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v5.py` | + Comet path prediction | 55% (20 games) |
 | `agent_v6.py` | + Defensive reinforcement | 20% (20 games) — FAIL |
 | `agent_v7.py` | + Fleet-speed scoring + fast-fleet send | 50% (20 games) — FAIL |
-| **`agent_v8.py`** | **Combined: orbit-lead + comet (best agent)** | **90% (20 games)** |
+| `agent_v8.py` | Combined: orbit-lead + comet | 90% (20 games) |
+| **`agent_v9.py`** | **+ Fleet path safety fix (full-ray sun check + OOB guard)** | **94% vs main.py (50 games), 70% vs v8** |
 
 ## How It Works
 
@@ -42,16 +43,18 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 
 **`agent_v8.py`**: Combines orbit-lead (v4) and comet opportunism (v5) — the two mechanics that individually passed ≥55%. Achieves 90% win rate vs agent_v3, confirmed across two 20-game runs.
 
+**`agent_v9.py`**: Fixes two fleet path safety bugs in v8: (1) sun-avoidance check now covers the full ray to the board edge instead of just source→predicted_target; (2) predicted positions outside the 100×100 board are rejected. Achieves 94% vs main.py and 70% head-to-head vs v8 (50 games each).
+
 See [specs/003-agent-gap-analysis/](specs/003-agent-gap-analysis/) for the full design documents and [experiments/](experiments/) for per-experiment results.
 
 ## Evaluating Agents
 
 ```bash
 # Head-to-head: any two agent files
-uv run python eval.py --agent0 agent_v8.py --agent1 agent_v3.py --games 20 --jobs 4
+uv run python eval.py --agent0 agent_v9.py --agent1 agent_v8.py --games 20 --jobs 4
 
 # With verbose move logging
-uv run python eval.py --agent0 agent_v8.py --agent1 agent_v3.py --games 3 --verbose
+uv run python eval.py --agent0 agent_v9.py --agent1 agent_v8.py --games 3 --verbose
 ```
 
 ## Submitting to Kaggle
