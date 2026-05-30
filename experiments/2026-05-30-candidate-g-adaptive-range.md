@@ -28,6 +28,10 @@ Replaced `nearest_dist * RANGE_FACTOR` with `nearest_dist * range_factor`. Kept 
 
 ## Conclusion
 
-**FAIL** — 0% win rate (19 draws, 1 loss) is identical to the self-play baseline pattern.
+**FAIL** — 0% win rate, score 47.5% (wins + 0.5×draws / games = 9.5/20); below the 55% threshold.
 
-The adaptive range produces no measurable effect in symmetric self-play. When both agents are agent_v18, both adjust their range in lockstep based on the same game state — if one is "winning" (ratio ≥ 1.5), the other is "losing" (ratio ≤ 0.7), so both expand/contract together and the net tactical effect cancels out. The mechanic may have asymmetric value against a fixed opponent, but it cannot demonstrate that advantage in symmetric self-play. This mechanic will NOT be included in agent_v20.
+Note (added 2026-05-30 after score metric was introduced): the "0% win rate" framing was misleading. 19 of 20 games were draws — agent_v18 was essentially tied with agent_v15, not decisively inferior. The mechanic was neutral, not harmful.
+
+Root cause: in symmetric self-play both agents share the same game state, so when one agent's ratio ≥ 1.5 (expand range), the other's ratio is ≤ 0.7 (contract range). The effects cancel symmetrically and neither side gains an edge over the other. The mechanic may have asymmetric value against a fixed-range opponent, but cannot demonstrate it against an identical mirror opponent.
+
+A smoother, less extreme formula (power-law rather than hard step-function) is being tested as Candidate J (agent_v22) in Round 3, informed by this result. This mechanic will NOT be included in agent_v20.

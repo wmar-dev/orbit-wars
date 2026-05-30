@@ -31,7 +31,7 @@ Each candidate mechanic is implemented as a standalone agent variant (agent_v21�
 
 **Why this priority**: Isolating mechanics prevents confounding. A combined agent that loses can't diagnose which mechanic caused the regression; each mechanic must prove itself independently first.
 
-**Independent Test**: Each candidate can be run with `eval.py --agent0 agent_vN.py --agent1 agent_v20.py --games 20 --seed 0` and produces a win rate. A mechanic passes if win rate ≥ 55%.
+**Independent Test**: Each candidate can be run with `eval.py --agent0 agent_vN.py --agent1 agent_v20.py --games 20 --seed 0` and produces a win rate. A mechanic passes if score ≥ 55% (score = wins + 0.5×draws / 20; draws count as 0.5, not as losses).
 
 **Acceptance Scenarios**:
 
@@ -88,8 +88,8 @@ If Round 3 (v21–v25) does not yield a combined agent that surpasses agent_v20,
 - **FR-001**: Each candidate mechanic MUST have an experiment record in `experiments/` before its agent file is written (Constitution IV).
 - **FR-002**: Each candidate agent (v21–v24 per round) MUST be implemented as a self-contained Python file at the repo root, inheriting all mechanics from agent_v20.
 - **FR-003**: Each candidate agent MUST be evaluated against agent_v20 over exactly 20 games using seeds 0–19.
-- **FR-004**: A mechanic MUST achieve ≥ 55% win rate vs agent_v20 to advance to the combined agent (agent_v25).
-- **FR-005**: The combined agent (agent_v25) MUST include all passing mechanics and be evaluated against agent_v20 over 20 games with a ≥ 65% target.
+- **FR-004**: A mechanic MUST achieve ≥ 55% score vs agent_v20 to advance to the combined agent (agent_v25). Score = (wins + 0.5 × draws) / total games; draws count as 0.5, not as losses.
+- **FR-005**: The combined agent (agent_v25) MUST include all passing mechanics and be evaluated against agent_v20 over 20 games with a ≥ 65% score target.
 - **FR-006**: README.md Agents table MUST be updated after each agent is created and evaluated.
 - **FR-007**: No existing safety guarantees (sun avoidance, OOB rejection, planet obstruction) may be removed or weakened in any new agent.
 - **FR-008**: Each new agent file MUST include a docstring listing which mechanics it adds and which prior agents it builds on.
@@ -124,8 +124,8 @@ The following mechanics are prioritized based on structural gaps identified in a
 ### Measurable Outcomes
 
 - **SC-001**: At least 4 candidate mechanics are individually evaluated with documented hypotheses and results per round.
-- **SC-002**: At least one mechanic achieves ≥ 55% win rate vs the round's baseline agent over 20 games.
-- **SC-003**: A combined agent is produced that achieves ≥ 65% win rate vs the round's baseline agent over 20 games.
+- **SC-002**: At least one mechanic achieves ≥ 55% score vs the round's baseline agent over 20 games (score counts draws as 0.5).
+- **SC-003**: A combined agent is produced that achieves ≥ 65% score vs the round's baseline agent over 20 games.
 - **SC-004**: No safety regression — the new best combined agent has 0% sun losses and 0% OOB losses verified via `diagnose_v9.py`.
 - **SC-005**: The README Agents table is updated with all new agents and their win rates after each evaluation.
 - **SC-006**: Iteration continues across multiple rounds until SC-003 is achieved — this feature is not complete until a new best agent exists.

@@ -37,7 +37,7 @@ Round 3 candidate mechanics:
 **Project Type**: Game AI agent scripts
 
 **Performance Goals**:
-- 2-player: each candidate ≥ 55% vs agent_v20; combined ≥ 65% vs agent_v20
+- 2-player: each candidate ≥ 55% score vs agent_v20 (score = wins + 0.5×draws / 20; draws count as 0.5); combined ≥ 65% score vs agent_v20
 - 4-player: combined agent achieves average rank ≤ 2.0 vs 3× random over 20 games (baseline established first)
 
 **Constraints**: actTimeout 1 s/turn; eval.py and diagnose_v9.py unchanged; no safety guard removal; agent file must be self-contained Python (Kaggle submission format)

@@ -142,7 +142,9 @@ def run_evaluation(agent0_path, agent1_path, num_games, verbose, jobs):
     print(f"Agent 1 ({agent1_path}): {wins[1]} wins")
     print(f"Draws:                 {draws}")
     win_rate = wins[0] / num_games * 100
-    print(f"Win rate (agent 0):    {win_rate:.1f}%")
+    score = (wins[0] + 0.5 * draws) / num_games * 100
+    print(f"Win rate (agent 0):    {win_rate:.1f}%  (draws count as losses)")
+    print(f"Score    (agent 0):    {score:.1f}%  (draws count as 0.5)")
 
 
 def main():
