@@ -1,8 +1,8 @@
 """
-T009: DQN with prioritized experience replay for Orbit Wars.
+T009: DQN with prioritized experience replay for Orbit Wars — MLX backend.
 
-Uses a factored Q-network (independent Q-heads per action dimension) with
-action masking, prioritized replay buffer (PER), and a target network.
+Uses factored Q-heads (independent heads per action dimension) with action masking,
+prioritized replay (PER), and a target network.
 
 Usage:
     uv run python rl/dqn.py --episodes 1000 --opponent random
@@ -16,85 +16,78 @@ import sys
 import time
 from pathlib import Path
 
+import mlx.core as mx
+import mlx.nn as nn
+import mlx.optimizers as optim
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from rl.env import OrbitWarsEnv
 from rl.obs import MAX_PLANETS, OBS_SIZE
-from rl.ppo import get_opponent, _latest_checkpoint
+from rl.ppo import get_opponent, _latest_checkpoint, save_checkpoint, load_checkpoint, _clip_grads, _save_torch_compat
 
 # ---------------------------------------------------------------------------
 # Hyperparameters
 # ---------------------------------------------------------------------------
-HIDDEN        = 256
-LR            = 1e-4
-GAMMA         = 0.99
-BUFFER_SIZE   = 10_000
-BATCH_SIZE    = 64
-TARGET_UPDATE = 200   # steps between target net syncs
-EPS_START     = 1.0
-EPS_END       = 0.05
-EPS_DECAY     = 500   # episodes to decay over
-PER_ALPHA     = 0.6
-PER_BETA_START= 0.4
-PER_BETA_END  = 1.0
-MAX_GRAD      = 10.0
+HIDDEN         = 256
+LR             = 1e-4
+GAMMA          = 0.99
+BUFFER_SIZE    = 10_000
+BATCH_SIZE     = 64
+TARGET_UPDATE  = 200
+EPS_START      = 1.0
+EPS_END        = 0.05
+EPS_DECAY      = 500
+PER_ALPHA      = 0.6
+PER_BETA_START = 0.4
+PER_BETA_END   = 1.0
+MAX_GRAD       = 10.0
 CHECKPOINT_EVERY = 200
-
-N_ACTIONS = [MAX_PLANETS, MAX_PLANETS, 5]  # factored heads
 
 
 # ---------------------------------------------------------------------------
-# Q-Network (factored heads)
+# Q-Network (MLX, factored heads)
 # ---------------------------------------------------------------------------
 class QNet(nn.Module):
     def __init__(self, obs_size=OBS_SIZE, hidden=HIDDEN):
         super().__init__()
-        self.backbone = nn.Sequential(
-            nn.Linear(obs_size, hidden), nn.ReLU(),
-            nn.Linear(hidden,   hidden), nn.ReLU(),
-        )
+        self.fc1    = nn.Linear(obs_size, hidden)
+        self.fc2    = nn.Linear(hidden,   hidden)
         self.q_src  = nn.Linear(hidden, MAX_PLANETS)
         self.q_tgt  = nn.Linear(hidden, MAX_PLANETS)
         self.q_frac = nn.Linear(hidden, 5)
 
-    def forward(self, x, src_mask=None, tgt_mask=None):
-        h = self.backbone(x)
+    def __call__(self, x, src_mask=None, tgt_mask=None):
+        h = nn.relu(self.fc1(x))
+        h = nn.relu(self.fc2(h))
         q_src  = self.q_src(h)
         q_tgt  = self.q_tgt(h)
         q_frac = self.q_frac(h)
         if src_mask is not None:
-            q_src = q_src.masked_fill(~src_mask, -1e9)
+            q_src = mx.where(src_mask, q_src, mx.full(q_src.shape, -1e9))
         if tgt_mask is not None:
-            q_tgt = q_tgt.masked_fill(~tgt_mask, -1e9)
+            q_tgt = mx.where(tgt_mask, q_tgt, mx.full(q_tgt.shape, -1e9))
         return q_src, q_tgt, q_frac
 
     def select_action(self, x, mask):
-        src_mask = mask[:, :12].bool()
-        tgt_mask = mask[:, 12:24].bool()
-        no_src = ~src_mask.any(dim=1, keepdim=True)
-        src_mask = src_mask | no_src
-        no_tgt = ~tgt_mask.any(dim=1, keepdim=True)
-        tgt_mask = tgt_mask | no_tgt
+        src_mask = mask[:, :12] > 0.5
+        tgt_mask = mask[:, 12:24] > 0.5
+        src_mask = mx.logical_or(src_mask, mx.logical_not(src_mask.any(axis=1, keepdims=True)))
+        tgt_mask = mx.logical_or(tgt_mask, mx.logical_not(tgt_mask.any(axis=1, keepdims=True)))
         q_src, q_tgt, q_frac = self(x, src_mask, tgt_mask)
-        return (q_src.argmax(dim=1),
-                q_tgt.argmax(dim=1),
-                q_frac.argmax(dim=1))
+        return mx.argmax(q_src, axis=1), mx.argmax(q_tgt, axis=1), mx.argmax(q_frac, axis=1)
 
 
 # ---------------------------------------------------------------------------
-# Prioritized Replay Buffer
+# Prioritized Replay Buffer (numpy — CPU side)
 # ---------------------------------------------------------------------------
 class PrioritizedReplay:
     def __init__(self, capacity, alpha=PER_ALPHA):
-        self.capacity = capacity
-        self.alpha    = alpha
-        self.buffer   = []
+        self.capacity  = capacity
+        self.alpha     = alpha
+        self.buffer    = []
         self.priorities= np.zeros(capacity, dtype=np.float32)
-        self.pos      = 0
+        self.pos       = 0
 
     def add(self, transition, priority=1.0):
         if len(self.buffer) < self.capacity:
@@ -105,7 +98,7 @@ class PrioritizedReplay:
         self.pos = (self.pos + 1) % self.capacity
 
     def sample(self, batch_size, beta=0.4):
-        n = len(self.buffer)
+        n     = len(self.buffer)
         probs = self.priorities[:n]
         probs = probs / probs.sum()
         indices = np.random.choice(n, batch_size, replace=False, p=probs)
@@ -122,76 +115,103 @@ class PrioritizedReplay:
         return len(self.buffer)
 
 
+def dqn_loss_fn(net, obs_b, act_b, rew_b, nobs_b, done_b, target_net, nmask_b, weights_b):
+    src_mask = obs_b[:, 267:267+12] > 0.5
+    tgt_mask = obs_b[:, 267+12:267+24] > 0.5
+    src_mask = mx.logical_or(src_mask, mx.logical_not(src_mask.any(axis=1, keepdims=True)))
+    tgt_mask = mx.logical_or(tgt_mask, mx.logical_not(tgt_mask.any(axis=1, keepdims=True)))
+
+    q_src, q_tgt, q_frac = net(obs_b, src_mask, tgt_mask)
+
+    def _gather(q, a):
+        B = q.shape[0]
+        return q[mx.arange(B), a.astype(mx.int32)]
+
+    cur_q = (_gather(q_src,  act_b[:, 0])
+           + _gather(q_tgt,  act_b[:, 1])
+           + _gather(q_frac, act_b[:, 2])) / 3.0
+
+    # Target (no gradient)
+    ns, nt, nf = target_net.select_action(nobs_b, nmask_b)
+    tq_src, tq_tgt, tq_frac = target_net(nobs_b)
+    next_q = (_gather(tq_src,  ns)
+            + _gather(tq_tgt,  nt)
+            + _gather(tq_frac, nf)) / 3.0
+    target_q = rew_b + GAMMA * next_q * (1.0 - done_b)
+
+    td = cur_q - mx.stop_gradient(target_q)
+    loss = (weights_b * td * td).mean()
+    return loss, td
+
+
 # ---------------------------------------------------------------------------
 # Training loop
 # ---------------------------------------------------------------------------
 def train(args):
-    device = torch.device(args.device)
     ckpt_dir = Path(args.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = Path(__file__).parent / "logs"
+    log_dir  = Path(__file__).parent / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / "dqn_train.csv"
 
-    net    = QNet().to(device)
-    target = QNet().to(device)
-    target.load_state_dict(net.state_dict())
-    target.eval()
-    optimizer = optim.Adam(net.parameters(), lr=LR)
+    net        = QNet()
+    target_net = QNet()
+    # Copy initial weights to target
+    mx.eval(net.parameters())
+    target_net.load_weights(list(_flatten_params(net.parameters())))
+    mx.eval(target_net.parameters())
 
-    replay = PrioritizedReplay(BUFFER_SIZE)
+    optimizer     = optim.Adam(learning_rate=LR)
+    loss_and_grad = nn.value_and_grad(net, dqn_loss_fn)
+    replay        = PrioritizedReplay(BUFFER_SIZE)
 
     start_episode = 0
     if args.resume:
         latest = _latest_checkpoint(ckpt_dir, "dqn")
         if latest:
-            ckpt = torch.load(latest, map_location=device, weights_only=False)
-            net.load_state_dict(ckpt["policy_state_dict"])
-            target.load_state_dict(ckpt["policy_state_dict"])
-            start_episode = ckpt.get("episode", 0)
+            start_episode, _ = load_checkpoint(net, latest)
+            target_net.load_weights(list(_flatten_params(net.parameters())))
             print(f"Resumed from {latest} (episode {start_episode})")
 
     csv_exists = log_path.exists()
-    csv_file = open(log_path, "a", newline="")
-    writer = csv.writer(csv_file)
+    csv_file   = open(log_path, "a", newline="")
+    writer     = csv.writer(csv_file)
     if not csv_exists:
         writer.writerow(["episode", "ep_reward", "ep_steps", "elapsed_s", "opponent", "epsilon"])
 
-    episode    = start_episode
-    global_step= 0
-    opponent   = get_opponent(episode, args.opponent, ckpt_dir)
-    env        = OrbitWarsEnv(opponent=opponent, seed=args.seed)
-    obs, _     = env.reset()
-    ep_reward  = 0.0
-    ep_steps   = 0
-    ep_start   = time.time()
+    episode     = start_episode
+    global_step = 0
+    opponent    = get_opponent(episode, args.opponent, ckpt_dir)
+    env         = OrbitWarsEnv(opponent=opponent, seed=args.seed)
+    obs, _      = env.reset()
+    ep_reward   = 0.0
+    ep_steps    = 0
+    ep_start    = time.time()
 
     def epsilon(ep):
-        t = min(ep / EPS_DECAY, 1.0)
+        t = min((ep - start_episode) / EPS_DECAY, 1.0)
         return EPS_START + t * (EPS_END - EPS_START)
 
     def beta(ep):
-        t = min(ep / args.episodes, 1.0)
+        t = min((ep - start_episode) / args.episodes, 1.0)
         return PER_BETA_START + t * (PER_BETA_END - PER_BETA_START)
 
-    print(f"Starting DQN training: {args.episodes} episodes, device={args.device}")
+    print(f"Starting DQN training (MLX GPU): {args.episodes} episodes")
 
     while episode < start_episode + args.episodes:
-        eps = epsilon(episode - start_episode)
+        eps = epsilon(episode)
 
-        obs_t  = torch.FloatTensor(obs).unsqueeze(0).to(device)
-        mask_t = torch.FloatTensor(obs[267:319]).unsqueeze(0).to(device)
+        obs_mx  = mx.array(obs[None], dtype=mx.float32)
+        mask_mx = mx.array(obs[267:319][None], dtype=mx.float32)
 
         if random.random() < eps:
-            action_np = np.array([
-                random.randrange(MAX_PLANETS),
-                random.randrange(MAX_PLANETS),
-                random.randrange(5),
-            ])
+            action_np = np.array([random.randrange(MAX_PLANETS),
+                                   random.randrange(MAX_PLANETS),
+                                   random.randrange(5)])
         else:
-            with torch.no_grad():
-                s, t, f = net.select_action(obs_t, mask_t)
-            action_np = np.array([s.item(), t.item(), f.item()])
+            s, t, f = net.select_action(obs_mx, mask_mx)
+            mx.eval(s, t, f)
+            action_np = np.array([int(s[0]), int(t[0]), int(f[0])])
 
         next_obs, reward, done, _, _ = env.step(action_np)
         replay.add((obs, action_np, reward, next_obs, float(done)))
@@ -200,60 +220,35 @@ def train(args):
         obs = next_obs
         global_step += 1
 
-        # Update target net
+        # Sync target network
         if global_step % TARGET_UPDATE == 0:
-            target.load_state_dict(net.state_dict())
+            target_net.load_weights(list(_flatten_params(net.parameters())))
+            mx.eval(target_net.parameters())
 
-        # Training step
+        # Train step
         if len(replay) >= BATCH_SIZE:
-            b = beta(episode - start_episode)
+            b = beta(episode)
             samples, indices, weights = replay.sample(BATCH_SIZE, beta=b)
             obs_b, act_b, rew_b, nobs_b, done_b = zip(*samples)
 
-            obs_b   = torch.FloatTensor(np.array(obs_b)).to(device)
-            act_b   = torch.LongTensor(np.array(act_b)).to(device)
-            rew_b   = torch.FloatTensor(np.array(rew_b)).to(device)
-            nobs_b  = torch.FloatTensor(np.array(nobs_b)).to(device)
-            done_b  = torch.FloatTensor(np.array(done_b)).to(device)
-            weights_t = torch.FloatTensor(weights).to(device)
+            obs_mx_b   = mx.array(np.array(obs_b,   dtype=np.float32))
+            act_mx_b   = mx.array(np.array(act_b,   dtype=np.int32))
+            rew_mx_b   = mx.array(np.array(rew_b,   dtype=np.float32))
+            nobs_mx_b  = mx.array(np.array(nobs_b,  dtype=np.float32))
+            done_mx_b  = mx.array(np.array(done_b,  dtype=np.float32))
+            nmask_mx_b = nobs_mx_b[:, 267:319]
+            w_mx_b     = mx.array(weights)
 
-            nmask_b = nobs_b[:, 267:319]
-            with torch.no_grad():
-                ns, nt, nf    = target.select_action(nobs_b, nmask_b)
-                tq_src, tq_tgt, tq_frac = target(nobs_b,
-                    nmask_b[:, :12].bool() | ~nmask_b[:, :12].bool(),  # allow all for target
-                    nmask_b[:, 12:24].bool() | ~nmask_b[:, 12:24].bool()
-                )
-                next_q = (
-                    tq_src.gather(1, ns.unsqueeze(1)).squeeze()
-                    + tq_tgt.gather(1, nt.unsqueeze(1)).squeeze()
-                    + tq_frac.gather(1, nf.unsqueeze(1)).squeeze()
-                ) / 3.0
-                target_q = rew_b + GAMMA * next_q * (1 - done_b)
+            (loss, td_mx), grads = loss_and_grad(
+                net, obs_mx_b, act_mx_b, rew_mx_b,
+                nobs_mx_b, done_mx_b, target_net, nmask_mx_b, w_mx_b
+            )
+            grads = _clip_grads(grads, MAX_GRAD)
+            optimizer.update(net, grads)
+            mx.eval(net.parameters(), optimizer.state, loss)
 
-            mask_b_t = obs_b[:, 267:319]
-            src_mask = mask_b_t[:, :12].bool()
-            tgt_mask = mask_b_t[:, 12:24].bool()
-            no_src = ~src_mask.any(dim=1, keepdim=True)
-            src_mask = src_mask | no_src
-            no_tgt = ~tgt_mask.any(dim=1, keepdim=True)
-            tgt_mask = tgt_mask | no_tgt
-
-            q_src, q_tgt, q_frac = net(obs_b, src_mask, tgt_mask)
-            cur_q = (
-                q_src.gather(1, act_b[:, 0].unsqueeze(1)).squeeze()
-                + q_tgt.gather(1, act_b[:, 1].unsqueeze(1)).squeeze()
-                + q_frac.gather(1, act_b[:, 2].unsqueeze(1)).squeeze()
-            ) / 3.0
-
-            td_errors = (cur_q - target_q).detach().cpu().numpy()
-            replay.update_priorities(indices, td_errors)
-
-            loss = (weights_t * (cur_q - target_q).pow(2)).mean()
-            optimizer.zero_grad()
-            loss.backward()
-            nn.utils.clip_grad_norm_(net.parameters(), MAX_GRAD)
-            optimizer.step()
+            td_np = np.array(td_mx)
+            replay.update_priorities(indices, td_np)
 
         if done:
             elapsed = time.time() - ep_start
@@ -264,19 +259,12 @@ def train(args):
                 print(f"ep={episode:5d} reward={ep_reward:+.3f} "
                       f"steps={ep_steps} eps={eps:.3f} opp={opponent[:20]}")
             episode += 1
-            ep_reward = 0.0
-            ep_steps  = 0
-            ep_start  = time.time()
+            ep_reward = 0.0; ep_steps = 0; ep_start = time.time()
 
             if episode % CHECKPOINT_EVERY == 0:
-                ckpt_path = ckpt_dir / f"dqn_ep{episode:05d}.pt"
-                torch.save({
-                    "policy_state_dict": net.state_dict(),
-                    "episode": episode,
-                    "score_vs_v38": None,
-                    "algorithm": "dqn",
-                }, ckpt_path)
-                all_ckpts = sorted(ckpt_dir.glob("dqn_ep*.pt"),
+                ckpt_path = ckpt_dir / f"dqn_ep{episode:05d}.npz"
+                save_checkpoint(net, episode, None, ckpt_path)
+                all_ckpts = sorted(ckpt_dir.glob("dqn_ep*.npz"),
                                    key=lambda p: int(p.stem.split("ep")[1]))
                 for old in all_ckpts[:-5]:
                     old.unlink(missing_ok=True)
@@ -288,23 +276,28 @@ def train(args):
                 env.close()
                 env = OrbitWarsEnv(opponent=opponent)
                 print(f"  Opponent updated: {opponent[:30]}")
-
             obs, _ = env.reset()
 
-    final_path = ckpt_dir / f"dqn_ep{episode:05d}.pt"
-    torch.save({
-        "policy_state_dict": net.state_dict(),
-        "episode": episode,
-        "score_vs_v38": None,
-        "algorithm": "dqn",
-    }, final_path)
-    best_path = ckpt_dir / "dqn_best.pt"
-    if not best_path.exists():
-        import shutil
-        shutil.copy(final_path, best_path)
+    final_path = ckpt_dir / f"dqn_ep{episode:05d}.npz"
+    save_checkpoint(net, episode, None, final_path)
+    import shutil
+    shutil.copy(final_path, ckpt_dir / "dqn_best.npz")
+    _save_torch_compat(net, ckpt_dir / f"dqn_ep{episode:05d}.pt", episode)
+    shutil.copy(ckpt_dir / f"dqn_ep{episode:05d}.pt", ckpt_dir / "dqn_best.pt")
     print(f"Training complete. Final checkpoint: {final_path}")
     csv_file.close()
     env.close()
+
+
+def _flatten_params(params, prefix=""):
+    result = []
+    for k, v in params.items():
+        key = f"{prefix}.{k}" if prefix else k
+        if isinstance(v, dict):
+            result.extend(_flatten_params(v, key))
+        elif isinstance(v, mx.array):
+            result.append((key, v))
+    return result
 
 
 if __name__ == "__main__":
@@ -312,7 +305,6 @@ if __name__ == "__main__":
     parser.add_argument("--episodes",       type=int, default=1000)
     parser.add_argument("--opponent",       type=str, default="random")
     parser.add_argument("--checkpoint-dir", type=str, default="rl/checkpoints")
-    parser.add_argument("--device",         type=str, default="cpu")
     parser.add_argument("--seed",           type=int, default=0)
     parser.add_argument("--resume",         action="store_true")
     args = parser.parse_args()

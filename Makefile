@@ -12,7 +12,6 @@ UV           := uv
 
 RL_OPPONENT ?= agent_v38.py
 RL_EPISODES ?= 1000
-RL_DEVICE   ?= cpu
 
 .PHONY: venv install test eval selfplay submit status episodes replay logs leaderboard render4 render2 help train-ppo train-dqn train-a2c
 
@@ -87,10 +86,10 @@ render2:
 	$(VENV)/bin/jupyter nbconvert --to html $(RENDER2_OUT)
 
 train-ppo:
-	$(UV) run python rl/ppo.py --episodes $(RL_EPISODES) --opponent $(RL_OPPONENT) --device $(RL_DEVICE)
+	$(UV) run python rl/ppo.py --episodes $(RL_EPISODES) --opponent $(RL_OPPONENT)
 
 train-dqn:
-	$(UV) run python rl/dqn.py --episodes $(RL_EPISODES) --opponent $(RL_OPPONENT) --device $(RL_DEVICE)
+	$(UV) run python rl/dqn.py --episodes $(RL_EPISODES) --opponent $(RL_OPPONENT)
 
 train-a2c:
-	$(UV) run python rl/a2c.py --episodes $(RL_EPISODES) --opponent $(RL_OPPONENT) --device $(RL_DEVICE)
+	$(UV) run python rl/a2c.py --episodes $(RL_EPISODES) --opponent $(RL_OPPONENT)
