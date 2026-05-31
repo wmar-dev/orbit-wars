@@ -1,19 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: N/A → 1.0.0 (initial ratification)
+Version change: 1.0.0 → 1.1.0
 Added sections:
-  - Core Principles (5 principles)
-  - Experiment & Documentation Discipline
-  - Development Workflow
-  - Governance
-Modified principles: N/A (initial)
-Removed sections: N/A (initial)
+  - Principle VI: Self-Contained Agent Files
+Modified sections:
+  - Development Workflow: added step 0 (self-containment check before submission)
+  - Governance: updated Last Amended date
+Removed sections: N/A
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ no changes needed (template is generic)
-  - .specify/templates/spec-template.md ✅ no changes needed (template is generic)
-  - .specify/templates/tasks-template.md ✅ no changes needed (template is generic)
+  - .specify/templates/plan-template.md ✅ no changes needed (Constitution Check is generic)
+  - .specify/templates/spec-template.md ✅ no changes needed
+  - .specify/templates/tasks-template.md ✅ no changes needed
 Follow-up TODOs: none
+Rationale: agent_v38.py was submitted to Kaggle with `from reward_signal import ...`,
+  causing ModuleNotFoundError in the Kaggle sandbox. Kaggle receives only the single
+  submitted agent file; local modules are not available at runtime. Principle VI
+  codifies the self-containment requirement and the pre-submission check to catch
+  this class of error before it reaches the leaderboard.
 -->
 
 # Orbit Wars Constitution
@@ -55,6 +59,31 @@ New agent versions MUST beat (or statistically tie) the previous best local agen
 at least 20 self-play games before being considered for submission. The Kaggle leaderboard
 is a lagging signal — local self-play is the ground truth for iteration.
 
+### VI. Self-Contained Agent Files
+
+Every agent file submitted to Kaggle MUST be fully self-contained. The agent file MAY
+only import from:
+
+- The Python standard library (e.g., `math`, `random`, `collections`)
+- `kaggle_environments` and its sub-packages
+
+Imports from any project-local module (e.g., `reward_signal`, `eval`, or any other `.py`
+file in the repository) are FORBIDDEN in agent files. All constants, helper functions,
+and logic required by the agent MUST be inlined directly into the agent file before
+submission.
+
+**Rationale**: Kaggle's sandbox receives only the single submitted file. Local modules
+are absent from the sandbox environment and will raise `ModuleNotFoundError` at runtime,
+causing immediate agent failure with no score.
+
+**Pre-submission check**: Before running `make submit`, verify compliance by running:
+
+```bash
+grep -n "^from \|^import " agent_vNN.py | grep -v "^.*kaggle_environments\|^.*math\|^.*random\|^.*collections\|^.*itertools\|^.*functools\|^.*heapq\|^.*copy\|^.*typing\|^.*abc\|^.*os\|^.*sys"
+```
+
+If the grep returns any output, those imports MUST be inlined before submission.
+
 ## Experiment & Documentation Discipline
 
 All experiment records MUST be stored in a `experiments/` directory at the project root.
@@ -70,6 +99,9 @@ Submissions to Kaggle MUST reference the experiment entry that validated the sub
 
 ## Development Workflow
 
+0. **Self-containment check**: Before submission, verify the agent file has no imports
+   from project-local modules (see Principle VI). Fix any violations by inlining the
+   required code into the agent file.
 1. Develop and test changes locally using the Makefile (`make test`, `make selfplay`).
 2. Document the experiment before or immediately after running self-play evaluation.
 3. If self-play shows improvement (≥20 game sample, consistent win rate > 50% vs. prior best),
@@ -82,10 +114,10 @@ Submissions to Kaggle MUST reference the experiment entry that validated the sub
 This constitution supersedes all other informal practices or undocumented conventions.
 Amendments require updating this file with a version bump and a rationale comment.
 All implementation plans and task lists MUST include a Constitution Check gate that
-verifies compliance with Principles I–V before proceeding.
+verifies compliance with Principles I–VI before proceeding.
 
 - MAJOR bump: Removal or redefinition of a core principle (e.g., dropping RL-first, allowing auto-submit).
 - MINOR bump: Addition of a new principle or material expansion of an existing one.
 - PATCH bump: Clarifications, wording, or non-semantic refinements.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-29 | **Last Amended**: 2026-05-29
+**Version**: 1.1.0 | **Ratified**: 2026-05-29 | **Last Amended**: 2026-05-30
