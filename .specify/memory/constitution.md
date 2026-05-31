@@ -1,23 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.1.0 → 1.2.0
-Modified sections:
-  - Principle VI: Multi-file submissions are supported — clarified that local modules
-    ARE available if submitted together as a package. Inlining is one option; packaging
-    is another. Pre-submission check updated accordingly.
-  - Development Workflow: step 0 updated to reflect multi-file option.
-  - Governance: updated Last Amended date.
+Version change: 1.2.0 → 1.3.0
+Modified sections: N/A
+Added sections:
+  - Principle VII: 95% Confidence Decision Gate — new governance principle establishing
+    confidence threshold for critical project decisions (submissions, architecture changes,
+    reward shaping, methodology shifts).
+  - Governance: updated Last Amended date and reflected new principle.
 Removed sections: N/A
 Templates requiring updates:
   - .specify/templates/plan-template.md ✅ no changes needed
   - .specify/templates/spec-template.md ✅ no changes needed
   - .specify/templates/tasks-template.md ✅ no changes needed
 Follow-up TODOs: none
-Rationale: CONTEST.md confirms multi-file submissions are supported. The original
-  Principle VI overcorrected from the ModuleNotFoundError incident by mandating
-  inlining as the only option. Multi-file packaging is a valid alternative and
-  enables cleaner agent code. The principle now permits both approaches.
+Rationale: Added explicit confidence threshold to formalize decision-making rigor.
+  All critical decisions (Kaggle submissions, architecture changes, reward shaping)
+  must meet 95% confidence bar before proceeding. Decisions below this threshold must
+  be explicitly documented with exception rationale.
 -->
 
 # Orbit Wars Constitution
@@ -90,6 +90,21 @@ grep -n "^from \|^import " agent_vNN.py | grep -v "^.*kaggle_environments\|^.*ma
 For each result, confirm the module is either inlined or will be submitted alongside
 the agent file.
 
+### VII. 95% Confidence Decision Gate
+
+All critical project decisions MUST be made only when there is at least 95% confidence
+in the decision. Critical decisions include: Kaggle submissions, major architectural
+changes, reward shaping pivots, training methodology shifts, and principle amendments.
+
+Confidence is measured through:
+- Rigorous local self-play evaluation (≥20 game baseline for agent decisions)
+- Clear experimental hypothesis validation before proceeding
+- No outstanding critical unknowns or unaddressed edge cases
+- Documentation or peer review confirming alignment with project principles
+
+Decisions made with <95% confidence MUST be explicitly documented with rationale for
+the exception and approved by project maintainers before implementation.
+
 ## Experiment & Documentation Discipline
 
 All experiment records MUST be stored in a `experiments/` directory at the project root.
@@ -126,4 +141,4 @@ verifies compliance with Principles I–VI before proceeding.
 - MINOR bump: Addition of a new principle or material expansion of an existing one.
 - PATCH bump: Clarifications, wording, or non-semantic refinements.
 
-**Version**: 1.2.0 | **Ratified**: 2026-05-29 | **Last Amended**: 2026-05-31
+**Version**: 1.3.0 | **Ratified**: 2026-05-29 | **Last Amended**: 2026-05-31
