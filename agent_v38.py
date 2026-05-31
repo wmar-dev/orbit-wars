@@ -34,7 +34,11 @@ Safety guards and base logic inherited from agent_v33 (unchanged):
 import math
 
 from kaggle_environments.envs.orbit_wars.orbit_wars import Planet
-from reward_signal import CAPTURE_SCALE, SHIP_SCALE, W_CAPTURE, W_SHIP
+
+W_CAPTURE = 0.5
+W_SHIP = 0.2
+CAPTURE_SCALE = 10.0
+SHIP_SCALE = 20.0
 
 EPSILON = 1e-6
 RANGE_FACTOR = 2.0
