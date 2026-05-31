@@ -51,7 +51,8 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v35.py` | + Transit-adjusted fleet sizing (Candidate T R6) | 0% score vs v33 (50 games) — FAIL |
 | `agent_v36.py` | + Threat-aware garrison floor (Candidate U R6) | 86% score vs v33 (50 games) |
 | `agent_v37.py` | + Winning-state garrison reduction (Candidate V R6) | 50% score vs v33 (50 draws) — FAIL |
-| **`agent_v38.py`** | **Combined R6: threat-aware garrison floor (Candidate U only)** | **86% score vs v33 (50 games), 0 sun/OOB losses** |
+| `agent_v38.py` | Combined R6: threat-aware garrison floor (Candidate U only) | 86% score vs v33 (50 games), 0 sun/OOB losses |
+| **`agent_v40.py`** | **+ Race-condition fleet scaling, production-weighted sender assignment, banking mode (B-C variant)** | **46% win rate vs v38 (50 games); +11.6% avg final ships vs v38 (20 games) — promoted on ship score** |
 
 ## How It Works
 
