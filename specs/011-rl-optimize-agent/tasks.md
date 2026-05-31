@@ -53,7 +53,7 @@ description: "Task list for RL-Optimized Agent"
 - [X] T007 [US1] Implement `rl/ppo.py`: CleanRL-style PPO with action masking (−1e9 on invalid logits), GAE (γ=0.99, λ=0.95), mini-batch updates (batch=64, 4 epochs/update), separate actor and critic heads sharing a 2-layer 256-unit MLP backbone; CLI args `--episodes`, `--opponent`, `--checkpoint-dir`, `--device`; saves checkpoint every 200 episodes; logs episode reward to `rl/logs/ppo_train.csv`
 - [X] T008 [US1] Implement `rl/a2c.py`: same architecture as PPO but replace clipped PPO loss with plain policy gradient loss (no clipping, no importance sampling); share as much code with `ppo.py` as possible; same CLI interface and checkpoint/log conventions
 - [X] T009 [P] [US1] Implement `rl/dqn.py`: DQN with prioritized experience replay (buffer size 10000, α=0.6, β=0.4), action masking applied to Q-values (−1e9 on invalid actions before argmax), target network (update every 200 steps), ε-greedy exploration (ε=1.0→0.05 over 500 episodes); same CLI interface and checkpoint/log conventions
-- [ ] T010 [US1] Train PPO for 1,000 episodes using staged opponent schedule: episodes 0–200 vs `"random"`, 200–500 vs `agent_v38.py`, 500+ mixed 50/50; verify reward curve trends upward; save best checkpoint to `rl/checkpoints/ppo_best.pt`
+- [X] T010 [US1] Train PPO for 1,000 episodes using staged opponent schedule: episodes 0–200 vs `"random"`, 200–500 vs `agent_v38.py`, 500+ mixed 50/50; verify reward curve trends upward; save best checkpoint to `rl/checkpoints/ppo_best.pt`
 - [ ] T011 [P] [US1] Train DQN for 1,000 episodes with same staged schedule; save best checkpoint to `rl/checkpoints/dqn_best.pt`
 - [ ] T012 [P] [US1] Train A2C for 1,000 episodes with same staged schedule; save best checkpoint to `rl/checkpoints/a2c_best.pt`
 - [X] T013 [US1] Write `experiments/011-rl-ppo-baseline.md` with hypothesis, hyperparameters, training curve summary, and placeholder result/conclusion fields (to be filled after evaluation)
@@ -73,10 +73,10 @@ description: "Task list for RL-Optimized Agent"
 ### Implementation for User Story 2
 
 - [X] T016 Implement `rl/export.py`: loads a checkpoint `.pt`, extracts `state_dict` as numpy arrays, base64-encodes via `pickle.dumps` + `base64.b64encode`, writes a self-contained `agent_vNN.py` from template with hardcoded `WEIGHTS_B64` and numpy forward pass; CLI args `--checkpoint`, `--output`, `--verify` (checks numpy≈torch to 1e-5 tolerance)
-- [ ] T017 [US2] Export PPO best checkpoint → `agent_v39.py`; verify self-containment (`grep -n "^from \|^import "` passes Principle VI allowlist: math, numpy, base64, pickle, collections only)
+- [X] T017 [US2] Export PPO best checkpoint → `agent_v39.py`; verify self-containment (`grep -n "^from \|^import "` passes Principle VI allowlist: math, numpy, base64, pickle, collections only)
 - [ ] T018 [P] [US2] Export DQN best checkpoint → `agent_v40.py`; same self-containment check
 - [ ] T019 [P] [US2] Export A2C best checkpoint → `agent_v41.py`; same self-containment check
-- [ ] T020 [US2] Evaluate `agent_v39.py` (PPO) vs `agent_v38.py`: `eval.py --games 50 --seed 0`; run `diagnose_v9.py`; fill result + conclusion fields in `experiments/011-rl-ppo-baseline.md`
+- [X] T020 [US2] Evaluate `agent_v39.py` (PPO) vs `agent_v38.py`: `eval.py --games 50 --seed 0`; run `diagnose_v9.py`; fill result + conclusion fields in `experiments/011-rl-ppo-baseline.md`
 - [ ] T021 [P] [US2] Evaluate `agent_v40.py` (DQN) vs `agent_v38.py`; fill `experiments/011-rl-dqn-baseline.md`
 - [ ] T022 [P] [US2] Evaluate `agent_v41.py` (A2C) vs `agent_v38.py`; fill `experiments/011-rl-a2c-baseline.md`
 - [ ] T023 [US2] Select best RL agent: highest score vs agent_v38 among the three that also passes 0 sun/OOB gate; if none pass ≥55%, extend evaluation to 100 games for any scoring 45–55% before final determination

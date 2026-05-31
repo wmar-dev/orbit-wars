@@ -23,7 +23,7 @@ Exported via `rl/export.py` → `agent_v39.py` (numpy inference, no torch at run
 ## Hyperparameters
 
 | Parameter | Value |
-|-----------|-------|
+| --------- | ----- |
 | Hidden units | 256 × 2 layers |
 | Learning rate | 3e-4 |
 | γ (discount) | 0.99 |
@@ -38,24 +38,27 @@ Exported via `rl/export.py` → `agent_v39.py` (numpy inference, no torch at run
 
 ## Self-Play Result
 
-> _To be filled after evaluation_
-
-- **Score vs agent_v38 (50 games, seed 0)**: TBD
-- **Sun/OOB losses (`diagnose_v9.py`)**: TBD
-- **Training time**: TBD
+- **Score vs agent_v38 (50 games)**: **0%** (0 wins, 0 draws, 50 losses) — FAIL
+- **Score vs main.py (20 games)**: 25% — agent is learning but weak
+- **Sun/OOB losses**: Not yet audited (unnecessary given 0% win rate)
+- **Training time**: ~23 minutes (1,000 episodes, CPU)
 
 ## Training Curve
 
-> _To be filled after training_
-
-| Episode | Avg reward (last 50 eps) |
-|---------|-------------------------|
-| 200 | TBD |
-| 500 | TBD |
-| 1000 | TBD |
+| Episode | Sample reward | Opponent |
+| ------- | ------------- | -------- |
+| 0 | +25.98 | random |
+| 194 | +2.22 | random |
+| 294 | +37.12 | agent_v38 |
+| 494 | +0.86 | agent_v38 |
+| 894 | +10.94 | self-play |
+| 994 | +33.34 | self-play |
+| **Last 10 avg** | **+36.90** | self-play |
 
 ## Conclusion
 
-> _To be filled after evaluation_
+**FAIL** — 0% score vs agent_v38 after 1,000 episodes.
 
-Pass (≥55%) / Fail (<55%). What was learned. Whether to submit or extend training.
+The agent learned some structure (can beat main.py 25% of the time, reward increased during self-play) but is not yet competitive against agent_v38. Root cause: 1,000 episodes is insufficient for an MLP policy to overcome a well-tuned heuristic agent. The reward signal is per-turn (not sparse), so credit assignment is not the issue.
+
+**Recommendation**: Extend to 5,000–10,000 episodes. The reward curve shows active learning during self-play (ep 800–1000), suggesting more training will continue to improve the policy. Do not submit this checkpoint. Re-evaluate after extended training.
