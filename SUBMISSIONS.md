@@ -1,13 +1,14 @@
 # Kaggle Submissions
 
-_Last updated: 2026-05-30_
+_Last updated: 2026-05-31_
 
 ## My Submissions
 
 | ref | file | date | description | score |
 |---|---|---|---|---|
-| 53195502 | agent_v30.py | 2026-05-30 20:22 | v30: Combined lower garrison floor (3x) + no range cap; ROI formula handles distance penalty naturally | **855.6** |
-| 53191584 | agent_v20.py | 2026-05-30 17:00 | v20: speed-corrected orbit lead + capture-ROI scoring (75% vs v15, 0 sun/OOB losses) | 684.8 |
+| 53199985 | agent_v38.py | 2026-05-31 01:04 | threat-aware garrison floor (Candidate U), 86% vs v33 | 699.1 |
+| 53195502 | agent_v30.py | 2026-05-30 20:22 | v30: Combined lower garrison floor (3x) + no range cap; ROI formula handles distance penalty naturally | **763.2** |
+| 53191584 | agent_v20.py | 2026-05-30 17:00 | v20: speed-corrected orbit lead + capture-ROI scoring (75% vs v15, 0 sun/OOB losses) | 675.3 |
 | 53189866 | agent_v15.py | 2026-05-30 15:55 | combined mechanics: redundant fleet avoidance, garrison sizing, threat-aware defense, single-sender coordination | 605.2 |
 | 53174826 | agent_v8.py  | 2026-05-30 06:36 | combined orbit-lead + comet opportunism, 90% vs v3 | 639.0 |
 | 53171645 | main.py      | 2026-05-30 04:10 | Nearest planet sniper v1 | 346.4 |
