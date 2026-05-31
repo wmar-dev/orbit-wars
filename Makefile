@@ -52,8 +52,15 @@ eval:
 selfplay:
 	$(UV) run python eval.py --agent0 agent_v2.py --agent1 agent_v2.py --games 10
 
-submit:
-	uvx kaggle competitions submit $(COMPETITION) -f $(AGENT) -m "$(MESSAGE)"
+SUBMISSION_ARCHIVE := $(basename $(AGENT)).tar.gz
+
+$(SUBMISSION_ARCHIVE):
+	cp $(AGENT) main.py
+	tar -czf $(SUBMISSION_ARCHIVE) main.py helper.py
+
+submit: $(SUBMISSION_ARCHIVE)
+	uvx kaggle competitions submit $(COMPETITION) -f $(SUBMISSION_ARCHIVE) -m "$(MESSAGE)"
+	rm -f $(SUBMISSION_ARCHIVE)
 
 status:
 	uvx kaggle competitions submissions $(COMPETITION)

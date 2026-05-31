@@ -108,19 +108,28 @@ uv run python eval.py --agent0 agent_v9.py --agent1 agent_v8.py --games 3 --verb
 
 ## Submitting to Kaggle
 
-Manual submission only (per project constitution). Document your experiment first:
+Manual submission only (per project constitution). Document your experiment first.
+
+Kaggle requires the entry point to be named `main.py` and accepts a `.tar.gz` for multi-file agents.
 
 ```bash
 # 1. Run eval and record results in experiments/
-make eval
+uv run python eval.py --agent0 agent_vNN.py --agent1 agent_vMM.py --games 50 --jobs 4
 
-# 2. Submit
-make submit AGENT=agent_v2.py MESSAGE="production-weighted targeting v1"
+# 2. Copy agent to main.py, build archive, and submit
+cp agent_vNN.py main.py
+tar -czf agent_vNN.tar.gz main.py helper.py
+uvx kaggle competitions submit orbit-wars -f agent_vNN.tar.gz -m "description"
+
+# Or use make (builds archive automatically):
+make submit MESSAGE="description"
 
 # 3. Check status
 make status
 make leaderboard
 ```
+
+**Note**: `main.py` is the Kaggle entry point — always overwrite it with the agent being submitted. `baseline.py` preserves the original getting-started agent.
 
 ## Visualization
 
