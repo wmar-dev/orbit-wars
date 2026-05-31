@@ -1,23 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0
-Added sections:
-  - Principle VI: Self-Contained Agent Files
+Version change: 1.1.0 → 1.2.0
 Modified sections:
-  - Development Workflow: added step 0 (self-containment check before submission)
-  - Governance: updated Last Amended date
+  - Principle VI: Multi-file submissions are supported — clarified that local modules
+    ARE available if submitted together as a package. Inlining is one option; packaging
+    is another. Pre-submission check updated accordingly.
+  - Development Workflow: step 0 updated to reflect multi-file option.
+  - Governance: updated Last Amended date.
 Removed sections: N/A
 Templates requiring updates:
-  - .specify/templates/plan-template.md ✅ no changes needed (Constitution Check is generic)
+  - .specify/templates/plan-template.md ✅ no changes needed
   - .specify/templates/spec-template.md ✅ no changes needed
   - .specify/templates/tasks-template.md ✅ no changes needed
 Follow-up TODOs: none
-Rationale: agent_v38.py was submitted to Kaggle with `from reward_signal import ...`,
-  causing ModuleNotFoundError in the Kaggle sandbox. Kaggle receives only the single
-  submitted agent file; local modules are not available at runtime. Principle VI
-  codifies the self-containment requirement and the pre-submission check to catch
-  this class of error before it reaches the leaderboard.
+Rationale: CONTEST.md confirms multi-file submissions are supported. The original
+  Principle VI overcorrected from the ModuleNotFoundError incident by mandating
+  inlining as the only option. Multi-file packaging is a valid alternative and
+  enables cleaner agent code. The principle now permits both approaches.
 -->
 
 # Orbit Wars Constitution
@@ -59,30 +59,36 @@ New agent versions MUST beat (or statistically tie) the previous best local agen
 at least 20 self-play games before being considered for submission. The Kaggle leaderboard
 is a lagging signal — local self-play is the ground truth for iteration.
 
-### VI. Self-Contained Agent Files
+### VI. Submission Package Completeness
 
-Every agent file submitted to Kaggle MUST be fully self-contained. The agent file MAY
-only import from:
+Every Kaggle submission MUST include all files required for the agent to run in the
+sandbox. Two valid approaches are permitted:
 
-- The Python standard library (e.g., `math`, `random`, `collections`)
-- `kaggle_environments` and its sub-packages
+**Option A — Single self-contained file**: The agent file imports only from the Python
+standard library and `kaggle_environments`. All helpers are inlined. No additional files
+are submitted.
 
-Imports from any project-local module (e.g., `reward_signal`, `eval`, or any other `.py`
-file in the repository) are FORBIDDEN in agent files. All constants, helper functions,
-and logic required by the agent MUST be inlined directly into the agent file before
-submission.
+**Option B — Multi-file package**: The agent file may import from local modules, provided
+every required `.py` file is included in the same Kaggle submission package. All submitted
+files MUST be listed explicitly before submitting.
 
-**Rationale**: Kaggle's sandbox receives only the single submitted file. Local modules
-are absent from the sandbox environment and will raise `ModuleNotFoundError` at runtime,
-causing immediate agent failure with no score.
+Imports from modules that are NOT included in the submission package are FORBIDDEN and
+will raise `ModuleNotFoundError` at runtime.
 
-**Pre-submission check**: Before running `make submit`, verify compliance by running:
+**Rationale**: CONTEST.md confirms multi-file submissions are supported. Option A
+(inlining) remains the simplest path for small agents. Option B enables cleaner code
+organisation when agent logic grows complex enough to warrant splitting.
+
+**Pre-submission check**: Before running `make submit`, verify every imported local module
+is either inlined (Option A) or present in the submission package (Option B):
 
 ```bash
-grep -n "^from \|^import " agent_vNN.py | grep -v "^.*kaggle_environments\|^.*math\|^.*random\|^.*collections\|^.*itertools\|^.*functools\|^.*heapq\|^.*copy\|^.*typing\|^.*abc\|^.*os\|^.*sys"
+# List all local imports in the agent file
+grep -n "^from \|^import " agent_vNN.py | grep -v "^.*kaggle_environments\|^.*math\|^.*random\|^.*collections\|^.*itertools\|^.*functools\|^.*heapq\|^.*copy\|^.*typing\|^.*abc\|^.*os\|^.*sys\|^.*numpy\|^.*base64\|^.*pickle"
 ```
 
-If the grep returns any output, those imports MUST be inlined before submission.
+For each result, confirm the module is either inlined or will be submitted alongside
+the agent file.
 
 ## Experiment & Documentation Discipline
 
@@ -99,9 +105,9 @@ Submissions to Kaggle MUST reference the experiment entry that validated the sub
 
 ## Development Workflow
 
-0. **Self-containment check**: Before submission, verify the agent file has no imports
-   from project-local modules (see Principle VI). Fix any violations by inlining the
-   required code into the agent file.
+0. **Submission package check**: Before submission, verify every local import in the agent
+   file is either inlined (Option A) or included as a file in the submission package
+   (Option B). See Principle VI for the check command.
 1. Develop and test changes locally using the Makefile (`make test`, `make selfplay`).
 2. Document the experiment before or immediately after running self-play evaluation.
 3. If self-play shows improvement (≥20 game sample, consistent win rate > 50% vs. prior best),
@@ -120,4 +126,4 @@ verifies compliance with Principles I–VI before proceeding.
 - MINOR bump: Addition of a new principle or material expansion of an existing one.
 - PATCH bump: Clarifications, wording, or non-semantic refinements.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-29 | **Last Amended**: 2026-05-30
+**Version**: 1.2.0 | **Ratified**: 2026-05-29 | **Last Amended**: 2026-05-31
