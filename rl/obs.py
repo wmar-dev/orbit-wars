@@ -206,12 +206,12 @@ def decode_action(action: np.ndarray, obs, player_id: int) -> list:
 
     fraction_idx: 0=no-op, 1=25%, 2=50%, 3=75%, 4=100% of surplus
     """
-    FRACTIONS = [0.0, 0.25, 0.5, 0.75, 1.0]
+    FRACTIONS = [0.25, 0.5, 0.75, 1.0]  # no-op removed; always send ships
 
     src_slot, tgt_slot, frac_idx = int(action[0]), int(action[1]), int(action[2])
-    fraction = FRACTIONS[frac_idx]
+    fraction = FRACTIONS[min(frac_idx, len(FRACTIONS) - 1)]
 
-    if fraction == 0.0 or src_slot == tgt_slot:
+    if src_slot == tgt_slot:
         return []
 
     raw_planets = obs.planets

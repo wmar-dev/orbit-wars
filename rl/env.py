@@ -106,7 +106,7 @@ class OrbitWarsEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-2.0, high=2.0, shape=(OBS_SIZE,), dtype=np.float32
         )
-        self.action_space = spaces.MultiDiscrete([12, 12, 5])
+        self.action_space = spaces.MultiDiscrete([12, 12, 4])  # 4 fractions: 25/50/75/100%
         self._env = None
         self._trainer = None
         self._prev_obs = None

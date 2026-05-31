@@ -55,7 +55,7 @@ class PolicyNet(nn.Module):
         self.fc2 = nn.Linear(hidden, hidden)
         self.actor_src  = nn.Linear(hidden, MAX_PLANETS)
         self.actor_tgt  = nn.Linear(hidden, MAX_PLANETS)
-        self.actor_frac = nn.Linear(hidden, 5)
+        self.actor_frac = nn.Linear(hidden, 4)  # 25/50/75/100% — no-op removed
         self.critic     = nn.Linear(hidden, 1)
 
     def __call__(self, x, src_mask=None, tgt_mask=None):
