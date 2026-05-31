@@ -10,7 +10,11 @@ EPISODE_ID   ?=
 VENV         := .venv
 UV           := uv
 
-.PHONY: venv install test eval selfplay submit status episodes replay logs leaderboard render4 render2 help
+RL_OPPONENT ?= agent_v38.py
+RL_EPISODES ?= 1000
+RL_DEVICE   ?= cpu
+
+.PHONY: venv install test eval selfplay submit status episodes replay logs leaderboard render4 render2 help train-ppo train-dqn train-a2c
 
 help:
 	@echo "Usage:"
@@ -81,3 +85,12 @@ render2:
 	$(VENV)/bin/python -m ipykernel install --user --name orbit-wars --display-name "Orbit Wars" 2>/dev/null || true
 	$(VENV)/bin/papermill render_2player.ipynb $(RENDER2_OUT) -p agent_file $(RENDER_AGENT) -p opponent $(RENDER_OPPONENT) --kernel orbit-wars
 	$(VENV)/bin/jupyter nbconvert --to html $(RENDER2_OUT)
+
+train-ppo:
+	$(UV) run python rl/ppo.py --episodes $(RL_EPISODES) --opponent $(RL_OPPONENT) --device $(RL_DEVICE)
+
+train-dqn:
+	$(UV) run python rl/dqn.py --episodes $(RL_EPISODES) --opponent $(RL_OPPONENT) --device $(RL_DEVICE)
+
+train-a2c:
+	$(UV) run python rl/a2c.py --episodes $(RL_EPISODES) --opponent $(RL_OPPONENT) --device $(RL_DEVICE)

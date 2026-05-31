@@ -17,3 +17,6 @@ render_4player_out.ipynb
 render_4player_out.html
 render_2player_out.ipynb
 render_2player_out.html
+
+rl/checkpoints/
+rl/logs/

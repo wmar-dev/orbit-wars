@@ -22,9 +22,9 @@ description: "Task list for RL-Optimized Agent"
 
 **Purpose**: Create the `rl/` training directory, install PyTorch and gymnasium, and verify the kaggle-environments integration before any training code is written.
 
-- [ ] T001 Create `rl/` directory structure: `rl/checkpoints/`, `rl/logs/`
-- [ ] T002 Add `torch` and `gymnasium` to `.venv` via `uv pip install torch gymnasium`
-- [ ] T003 [P] Verify kaggle orbit_wars env boots: `uv run python -c "from kaggle_environments import make; env = make('orbit_wars'); print('ok')"`
+- [X] T001 Create `rl/` directory structure: `rl/checkpoints/`, `rl/logs/`
+- [X] T002 Add `torch` and `gymnasium` to `.venv` via `uv pip install torch gymnasium`
+- [X] T003 [P] Verify kaggle orbit_wars env boots: `uv run python -c "from kaggle_environments import make; env = make('orbit_wars'); print('ok')"`
 
 ---
 
@@ -34,9 +34,9 @@ description: "Task list for RL-Optimized Agent"
 
 **⚠️ CRITICAL**: No training work can begin until this phase is complete.
 
-- [ ] T004 Implement `rl/obs.py`: `encode_obs(obs, player_id) -> (np.ndarray[319], np.ndarray[52])` using the sorted padded layout from data-model.md (planets sorted by angle, fleets by distance, comets by path_index; owner one-hot encoding; boolean mask bits appended)
-- [ ] T005 Implement `rl/env.py`: `OrbitWarsEnv(gymnasium.Env)` with `reset(opponent)`, `step(action)`, `MultiDiscrete([12,12,5])` action space, `Box(319,)` observation space; uses `env.train([None, opponent])` kaggle trainer API; computes reward via inlined `reward_signal.py` constants
-- [ ] T006 Smoke test env: run 1 complete episode, assert obs shape is `(319,)`, reward is non-zero, `done` fires before step 250; fix any kaggle API shape mismatches
+- [X] T004 Implement `rl/obs.py`: `encode_obs(obs, player_id) -> (np.ndarray[319], np.ndarray[52])` using the sorted padded layout from data-model.md (planets sorted by angle, fleets by distance, comets by path_index; owner one-hot encoding; boolean mask bits appended)
+- [X] T005 Implement `rl/env.py`: `OrbitWarsEnv(gymnasium.Env)` with `reset(opponent)`, `step(action)`, `MultiDiscrete([12,12,5])` action space, `Box(319,)` observation space; uses `env.train([None, opponent])` kaggle trainer API; computes reward via inlined `reward_signal.py` constants
+- [X] T006 Smoke test env: run 1 complete episode, assert obs shape is `(319,)`, reward is non-zero, `done` fires before step 250; fix any kaggle API shape mismatches
 
 **Checkpoint**: Foundation ready — `OrbitWarsEnv` produces valid obs/reward/done; training loops can now be built.
 
@@ -50,15 +50,15 @@ description: "Task list for RL-Optimized Agent"
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Implement `rl/ppo.py`: CleanRL-style PPO with action masking (−1e9 on invalid logits), GAE (γ=0.99, λ=0.95), mini-batch updates (batch=64, 4 epochs/update), separate actor and critic heads sharing a 2-layer 256-unit MLP backbone; CLI args `--episodes`, `--opponent`, `--checkpoint-dir`, `--device`; saves checkpoint every 200 episodes; logs episode reward to `rl/logs/ppo_train.csv`
-- [ ] T008 [US1] Implement `rl/a2c.py`: same architecture as PPO but replace clipped PPO loss with plain policy gradient loss (no clipping, no importance sampling); share as much code with `ppo.py` as possible; same CLI interface and checkpoint/log conventions
-- [ ] T009 [P] [US1] Implement `rl/dqn.py`: DQN with prioritized experience replay (buffer size 10000, α=0.6, β=0.4), action masking applied to Q-values (−1e9 on invalid actions before argmax), target network (update every 200 steps), ε-greedy exploration (ε=1.0→0.05 over 500 episodes); same CLI interface and checkpoint/log conventions
+- [X] T007 [US1] Implement `rl/ppo.py`: CleanRL-style PPO with action masking (−1e9 on invalid logits), GAE (γ=0.99, λ=0.95), mini-batch updates (batch=64, 4 epochs/update), separate actor and critic heads sharing a 2-layer 256-unit MLP backbone; CLI args `--episodes`, `--opponent`, `--checkpoint-dir`, `--device`; saves checkpoint every 200 episodes; logs episode reward to `rl/logs/ppo_train.csv`
+- [X] T008 [US1] Implement `rl/a2c.py`: same architecture as PPO but replace clipped PPO loss with plain policy gradient loss (no clipping, no importance sampling); share as much code with `ppo.py` as possible; same CLI interface and checkpoint/log conventions
+- [X] T009 [P] [US1] Implement `rl/dqn.py`: DQN with prioritized experience replay (buffer size 10000, α=0.6, β=0.4), action masking applied to Q-values (−1e9 on invalid actions before argmax), target network (update every 200 steps), ε-greedy exploration (ε=1.0→0.05 over 500 episodes); same CLI interface and checkpoint/log conventions
 - [ ] T010 [US1] Train PPO for 1,000 episodes using staged opponent schedule: episodes 0–200 vs `"random"`, 200–500 vs `agent_v38.py`, 500+ mixed 50/50; verify reward curve trends upward; save best checkpoint to `rl/checkpoints/ppo_best.pt`
 - [ ] T011 [P] [US1] Train DQN for 1,000 episodes with same staged schedule; save best checkpoint to `rl/checkpoints/dqn_best.pt`
 - [ ] T012 [P] [US1] Train A2C for 1,000 episodes with same staged schedule; save best checkpoint to `rl/checkpoints/a2c_best.pt`
-- [ ] T013 [US1] Write `experiments/011-rl-ppo-baseline.md` with hypothesis, hyperparameters, training curve summary, and placeholder result/conclusion fields (to be filled after evaluation)
-- [ ] T014 [P] [US1] Write `experiments/011-rl-dqn-baseline.md` with same structure
-- [ ] T015 [P] [US1] Write `experiments/011-rl-a2c-baseline.md` with same structure
+- [X] T013 [US1] Write `experiments/011-rl-ppo-baseline.md` with hypothesis, hyperparameters, training curve summary, and placeholder result/conclusion fields (to be filled after evaluation)
+- [X] T014 [P] [US1] Write `experiments/011-rl-dqn-baseline.md` with same structure
+- [X] T015 [P] [US1] Write `experiments/011-rl-a2c-baseline.md` with same structure
 
 **Checkpoint**: All three algorithms have trained for 1,000 episodes and saved best checkpoints. Reward curves show non-trivial learning. Experiment records exist.
 
@@ -72,7 +72,7 @@ description: "Task list for RL-Optimized Agent"
 
 ### Implementation for User Story 2
 
-- [ ] T016 Implement `rl/export.py`: loads a checkpoint `.pt`, extracts `state_dict` as numpy arrays, base64-encodes via `pickle.dumps` + `base64.b64encode`, writes a self-contained `agent_vNN.py` from template with hardcoded `WEIGHTS_B64` and numpy forward pass; CLI args `--checkpoint`, `--output`, `--verify` (checks numpy≈torch to 1e-5 tolerance)
+- [X] T016 Implement `rl/export.py`: loads a checkpoint `.pt`, extracts `state_dict` as numpy arrays, base64-encodes via `pickle.dumps` + `base64.b64encode`, writes a self-contained `agent_vNN.py` from template with hardcoded `WEIGHTS_B64` and numpy forward pass; CLI args `--checkpoint`, `--output`, `--verify` (checks numpy≈torch to 1e-5 tolerance)
 - [ ] T017 [US2] Export PPO best checkpoint → `agent_v39.py`; verify self-containment (`grep -n "^from \|^import "` passes Principle VI allowlist: math, numpy, base64, pickle, collections only)
 - [ ] T018 [P] [US2] Export DQN best checkpoint → `agent_v40.py`; same self-containment check
 - [ ] T019 [P] [US2] Export A2C best checkpoint → `agent_v41.py`; same self-containment check
@@ -108,8 +108,8 @@ description: "Task list for RL-Optimized Agent"
 
 **Purpose**: Documentation, extended training, and infrastructure improvements that benefit all algorithms.
 
-- [ ] T030 [P] Add `make train-ppo`, `make train-dqn`, `make train-a2c` targets to `Makefile` for convenient training invocation
-- [ ] T031 [P] Add `rl/checkpoints/` and `rl/logs/` to `.gitignore` (checkpoint files are large; logs are ephemeral)
+- [X] T030 [P] Add `make train-ppo`, `make train-dqn`, `make train-a2c` targets to `Makefile` for convenient training invocation
+- [X] T031 [P] Add `rl/checkpoints/` and `rl/logs/` to `.gitignore` (checkpoint files are large; logs are ephemeral)
 - [ ] T032 If any algorithm scores 45–55% on 50 games: extend to 5,000 episodes and re-evaluate; update experiment record with extended results
 - [ ] T033 [P] Add `--resume` flag to all training scripts to load from most recent checkpoint in `--checkpoint-dir` and continue training from that episode
 
