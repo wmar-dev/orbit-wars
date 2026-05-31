@@ -6,7 +6,9 @@ Last updated: 2026-05-31
 
 | ref | file | date | description | score |
 | --- | ---- | ---- | ----------- | ----- |
-| 53199985 | agent_v38.py | 2026-05-31 01:04 | threat-aware garrison floor (Candidate U), 86% vs v33 | **776.7** |
+| 53227491 | agent_v41.tar.gz | 2026-05-31 17:44 | agent_v41: dynamic garrison floor ramp 1x→4x (54% vs v38, 60% vs v40 locally) | 755.1 |
+| 53226709 | agent_v40.py | 2026-05-31 17:16 | agent_v40: race-condition fleet scaling, production-weighted scoring, banking mode (+11.6% avg ships vs v38) | 734.9 |
+| 53199985 | agent_v38.py | 2026-05-31 01:04 | threat-aware garrison floor (Candidate U), 86% vs v33 | **772.0** |
 | 53195502 | agent_v30.py | 2026-05-30 20:22 | v30: Combined lower garrison floor (3x) + no range cap; ROI formula handles distance penalty naturally | 775.8 |
 | 53191584 | agent_v20.py | 2026-05-30 17:00 | v20: speed-corrected orbit lead + capture-ROI scoring (75% vs v15, 0 sun/OOB losses) | 675.3 |
 | 53189866 | agent_v15.py | 2026-05-30 15:55 | combined mechanics: redundant fleet avoidance, garrison sizing, threat-aware defense, single-sender coordination | 605.2 |

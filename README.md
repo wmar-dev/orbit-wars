@@ -52,7 +52,9 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v36.py` | + Threat-aware garrison floor (Candidate U R6) | 86% score vs v33 (50 games) |
 | `agent_v37.py` | + Winning-state garrison reduction (Candidate V R6) | 50% score vs v33 (50 draws) — FAIL |
 | `agent_v38.py` | Combined R6: threat-aware garrison floor (Candidate U only) | 86% score vs v33 (50 games), 0 sun/OOB losses |
-| **`agent_v40.py`** | **+ Race-condition fleet scaling, production-weighted sender assignment, banking mode (B-C variant)** | **46% win rate vs v38 (50 games); +11.6% avg final ships vs v38 (20 games) — promoted on ship score** |
+| `agent_v40.py` | + Race-condition fleet scaling, production-weighted sender assignment, banking mode (B-C variant) | 46% win rate vs v38 (50 games); +11.6% avg final ships vs v38 (20 games) |
+| `agent_v41.py` | Clean refactor with helper.py module split | 52% vs v38; Kaggle score 755.1 |
+| **`agent_v42.py`** | **+ Dynamic garrison floor: ramps 1x->4x over steps 0-300 (replaces static 3x)** | **54% win rate vs v38 (50 games); 60% win rate vs v40 (50 games)** |
 
 ## How It Works
 
