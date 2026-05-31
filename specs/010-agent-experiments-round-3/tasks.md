@@ -21,7 +21,7 @@
 
 **Purpose**: Verify evaluation harness is working before writing any new agent files
 
-- [ ] T001 Run 5-game smoke test to confirm eval harness: `python eval.py --agent0 agent_v33.py --agent1 agent_v33.py --games 5 --seed 0` — expect ~50% with no crashes
+- [X] T001 Run 5-game smoke test to confirm eval harness: `python eval.py --agent0 agent_v33.py --agent1 agent_v33.py --games 5 --seed 0` — expect ~50% with no crashes
 
 ---
 
@@ -31,10 +31,10 @@
 
 **⚠️ CRITICAL**: No candidate agent file (v34–v38) can be created until all four records exist with hypothesis, change description, and pass threshold filled in
 
-- [ ] T002 [P] Write Candidate S experiment record — hypothesis, change (ANGLE_EPSILON=0.1, in_transit dict, ships_needed deduction), pass threshold (≥55% vs agent_v33) in `experiments/010-candidate-S-fleet-dedup.md`
-- [ ] T003 [P] Write Candidate T experiment record — hypothesis, change (projected_garrison = target.ships + target.production × travel_turns, one fixed-point iter), pass threshold in `experiments/010-candidate-T-transit-sizing.md`
-- [ ] T004 [P] Write Candidate U experiment record — hypothesis, change (threat dict from obs.fleets, floor = max(3×prod, incoming_enemy_ships)), pass threshold in `experiments/010-candidate-U-threat-garrison.md`
-- [ ] T005 [P] Write Candidate V experiment record — hypothesis, change (effective_floor_factor = 1 when own_total ≥ 2.0 × enemy_total, else 3), pass threshold in `experiments/010-candidate-V-winning-throttle.md`
+- [X] T00X [P] Write Candidate S experiment record — hypothesis, change (ANGLE_EPSILON=0.1, in_transit dict, ships_needed deduction), pass threshold (≥55% vs agent_v33) in `experiments/010-candidate-S-fleet-dedup.md`
+- [X] T00X [P] Write Candidate T experiment record — hypothesis, change (projected_garrison = target.ships + target.production × travel_turns, one fixed-point iter), pass threshold in `experiments/010-candidate-T-transit-sizing.md`
+- [X] T00X [P] Write Candidate U experiment record — hypothesis, change (threat dict from obs.fleets, floor = max(3×prod, incoming_enemy_ships)), pass threshold in `experiments/010-candidate-U-threat-garrison.md`
+- [X] T00X [P] Write Candidate V experiment record — hypothesis, change (effective_floor_factor = 1 when own_total ≥ 2.0 × enemy_total, else 3), pass threshold in `experiments/010-candidate-V-winning-throttle.md`
 
 **Checkpoint**: All 4 experiment records exist with hypotheses filled in → candidate implementation can begin
 
@@ -48,31 +48,31 @@
 
 ### Candidate S — Fleet Deduplication (agent_v34)
 
-- [ ] T006 [US1] Implement `agent_v34.py` — copy agent_v33.py; add `ANGLE_EPSILON = 0.1`; parse `obs.fleets` to build `in_transit` dict (angle-match friendly fleets to targets); replace `ships_needed = best_target.ships + 1` with `ships_needed = max(1, best_target.ships + 1 - in_transit.get(best_target.id, 0))`; skip if ships_needed ≤ 0; update docstring in `agent_v34.py`
-- [ ] T007 [US1] Evaluate Candidate S — run `python eval.py --agent0 agent_v34.py --agent1 agent_v33.py --games 50 --seed 0`; if score is 50–55%, extend to 100 games before deciding; record score in `experiments/010-candidate-S-fleet-dedup.md`
+- [X] T00X [US1] Implement `agent_v34.py` — copy agent_v33.py; add `ANGLE_EPSILON = 0.1`; parse `obs.fleets` to build `in_transit` dict (angle-match friendly fleets to targets); replace `ships_needed = best_target.ships + 1` with `ships_needed = max(1, best_target.ships + 1 - in_transit.get(best_target.id, 0))`; skip if ships_needed ≤ 0; update docstring in `agent_v34.py`
+- [X] T00X [US1] Evaluate Candidate S — run `python eval.py --agent0 agent_v34.py --agent1 agent_v33.py --games 50 --seed 0`; if score is 50–55%, extend to 100 games before deciding; record score in `experiments/010-candidate-S-fleet-dedup.md`
 
 ### Candidate T — Transit-Adjusted Sizing (agent_v35)
 
-- [ ] T008 [P] [US1] Implement `agent_v35.py` — copy agent_v33.py; add `travel_turns = math.ceil(dist / fleet_speed(best_target.ships + 1))`; replace `ships_needed = best_target.ships + 1` with `ships_needed = int(best_target.ships + best_target.production * travel_turns) + 1`; update docstring in `agent_v35.py`
-- [ ] T009 [US1] Evaluate Candidate T — run `python eval.py --agent0 agent_v35.py --agent1 agent_v33.py --games 50 --seed 0`; extend to 100 games if 50–55%; record score in `experiments/010-candidate-T-transit-sizing.md`
+- [X] T00X [P] [US1] Implement `agent_v35.py` — copy agent_v33.py; add `travel_turns = math.ceil(dist / fleet_speed(best_target.ships + 1))`; replace `ships_needed = best_target.ships + 1` with `ships_needed = int(best_target.ships + best_target.production * travel_turns) + 1`; update docstring in `agent_v35.py`
+- [X] T00X [US1] Evaluate Candidate T — run `python eval.py --agent0 agent_v35.py --agent1 agent_v33.py --games 50 --seed 0`; extend to 100 games if 50–55%; record score in `experiments/010-candidate-T-transit-sizing.md`
 
 ### Candidate U — Threat-Aware Garrison Floor (agent_v36)
 
-- [ ] T010 [P] [US1] Implement `agent_v36.py` — copy agent_v33.py; parse `obs.fleets` to build `threat` dict (angle-match enemy fleets to owned planets using ANGLE_EPSILON=0.1, accumulate ships); replace `_garrison_floor(src)` calls with `max(src.production * GARRISON_FLOOR_FACTOR, threat.get(src.id, 0))`; update docstring in `agent_v36.py`
-- [ ] T011 [US1] Evaluate Candidate U — run `python eval.py --agent0 agent_v36.py --agent1 agent_v33.py --games 50 --seed 0`; extend to 100 games if 50–55%; record score in `experiments/010-candidate-U-threat-garrison.md`
+- [X] T010 [P] [US1] Implement `agent_v36.py` — copy agent_v33.py; parse `obs.fleets` to build `threat` dict (angle-match enemy fleets to owned planets using ANGLE_EPSILON=0.1, accumulate ships); replace `_garrison_floor(src)` calls with `max(src.production * GARRISON_FLOOR_FACTOR, threat.get(src.id, 0))`; update docstring in `agent_v36.py`
+- [X] T011 [US1] Evaluate Candidate U — run `python eval.py --agent0 agent_v36.py --agent1 agent_v33.py --games 50 --seed 0`; extend to 100 games if 50–55%; record score in `experiments/010-candidate-U-threat-garrison.md`
 
 ### Candidate V — Winning-State Garrison Reduction (agent_v37)
 
-- [ ] T012 [P] [US1] Implement `agent_v37.py` — copy agent_v33.py; after computing `my_planets` and `planets`, add `own_total = sum(p.ships for p in my_planets)`, `enemy_total = sum(p.ships for p in planets if p.owner not in (-1, player))`, `effective_floor_factor = 1 if own_total >= 2.0 * max(enemy_total, 1) else GARRISON_FLOOR_FACTOR`; replace `GARRISON_FLOOR_FACTOR` in `_garrison_floor` call with `effective_floor_factor` (pass as argument or inline); update docstring in `agent_v37.py`
-- [ ] T013 [US1] Evaluate Candidate V — run `python eval.py --agent0 agent_v37.py --agent1 agent_v33.py --games 50 --seed 0`; extend to 100 games if 50–55%; record score in `experiments/010-candidate-V-winning-throttle.md`
+- [X] T012 [P] [US1] Implement `agent_v37.py` — copy agent_v33.py; after computing `my_planets` and `planets`, add `own_total = sum(p.ships for p in my_planets)`, `enemy_total = sum(p.ships for p in planets if p.owner not in (-1, player))`, `effective_floor_factor = 1 if own_total >= 2.0 * max(enemy_total, 1) else GARRISON_FLOOR_FACTOR`; replace `GARRISON_FLOOR_FACTOR` in `_garrison_floor` call with `effective_floor_factor` (pass as argument or inline); update docstring in `agent_v37.py`
+- [X] T013 [US1] Evaluate Candidate V — run `python eval.py --agent0 agent_v37.py --agent1 agent_v33.py --games 50 --seed 0`; extend to 100 games if 50–55%; record score in `experiments/010-candidate-V-winning-throttle.md`
 
 ### Finalize US1
 
-- [ ] T014 [P] [US1] Fill in conclusion for Candidate S in `experiments/010-candidate-S-fleet-dedup.md` (pass/fail, root-cause note if failed)
-- [ ] T015 [P] [US1] Fill in conclusion for Candidate T in `experiments/010-candidate-T-transit-sizing.md`
-- [ ] T016 [P] [US1] Fill in conclusion for Candidate U in `experiments/010-candidate-U-threat-garrison.md`
-- [ ] T017 [P] [US1] Fill in conclusion for Candidate V in `experiments/010-candidate-V-winning-throttle.md`
-- [ ] T018 [US1] Update `README.md` Agents table — add rows for agent_v34, v35, v36, v37 with their scores and pass/fail status
+- [X] T014 [P] [US1] Fill in conclusion for Candidate S in `experiments/010-candidate-S-fleet-dedup.md` (pass/fail, root-cause note if failed)
+- [X] T015 [P] [US1] Fill in conclusion for Candidate T in `experiments/010-candidate-T-transit-sizing.md`
+- [X] T016 [P] [US1] Fill in conclusion for Candidate U in `experiments/010-candidate-U-threat-garrison.md`
+- [X] T017 [P] [US1] Fill in conclusion for Candidate V in `experiments/010-candidate-V-winning-throttle.md`
+- [X] T018 [US1] Update `README.md` Agents table — add rows for agent_v34, v35, v36, v37 with their scores and pass/fail status
 
 **Checkpoint**: All 4 candidates evaluated, experiment records complete, README updated → ready for combined agent
 
@@ -84,13 +84,13 @@
 
 **Independent Test**: Run `python eval.py --agent0 agent_v38.py --agent1 agent_v33.py --games 50 --seed 0` and confirm score ≥65%, then run `python diagnose_v9.py --agent agent_v38.py --games 50` and confirm 0 sun/OOB losses.
 
-- [ ] T019 [US2] Review all four candidate results (from T014–T017); identify which candidates scored ≥55% (or ≥55% in 100-game extension); document the inclusion list for agent_v38
-- [ ] T020 [US2] Write combined agent experiment record in `experiments/010-combined-v38.md` — list included mechanics (all passing candidates), hypothesis (expected ≥65% combined improvement), pass threshold
-- [ ] T021 [US2] Implement `agent_v38.py` — build on agent_v33.py; add a single shared `obs.fleets` parse pass that builds both `in_transit` and `threat` dicts; integrate all passing mechanics in the order specified in data-model.md (fleet parse → threat floor → winning factor → transit sizing → dedup); update docstring listing all stacked mechanics in `agent_v38.py`
-- [ ] T022 [US2] Evaluate combined agent — run `python eval.py --agent0 agent_v38.py --agent1 agent_v33.py --games 50 --seed 0`; if score fails ≥65%, test mechanic subsets to diagnose interaction regressions
-- [ ] T023 [US2] Run safety audit — `python diagnose_v9.py --agent agent_v38.py --games 50 --seed 0`; verify 0 sun losses and 0 OOB losses; record total launches and capture rate
-- [ ] T024 [US2] Fill in combined agent results and conclusion in `experiments/010-combined-v38.md` (score, safety results, PASS/FAIL determination)
-- [ ] T025 [US2] If agent_v38 passes ≥65% with 0 sun/OOB losses: update `README.md` Agents table adding agent_v38 bolded as new best, and update `AGENT` and `RENDER_AGENT` variables in `Makefile` to `agent_v38.py`
+- [X] T019 [US2] Review all four candidate results (from T014–T017); identify which candidates scored ≥55% (or ≥55% in 100-game extension); document the inclusion list for agent_v38
+- [X] T020 [US2] Write combined agent experiment record in `experiments/010-combined-v38.md` — list included mechanics (all passing candidates), hypothesis (expected ≥65% combined improvement), pass threshold
+- [X] T021 [US2] Implement `agent_v38.py` — build on agent_v33.py; add a single shared `obs.fleets` parse pass that builds both `in_transit` and `threat` dicts; integrate all passing mechanics in the order specified in data-model.md (fleet parse → threat floor → winning factor → transit sizing → dedup); update docstring listing all stacked mechanics in `agent_v38.py`
+- [X] T022 [US2] Evaluate combined agent — run `python eval.py --agent0 agent_v38.py --agent1 agent_v33.py --games 50 --seed 0`; if score fails ≥65%, test mechanic subsets to diagnose interaction regressions
+- [X] T023 [US2] Run safety audit — `python diagnose_v9.py --agent agent_v38.py --games 50 --seed 0`; verify 0 sun losses and 0 OOB losses; record total launches and capture rate
+- [X] T024 [US2] Fill in combined agent results and conclusion in `experiments/010-combined-v38.md` (score, safety results, PASS/FAIL determination)
+- [X] T025 [US2] If agent_v38 passes ≥65% with 0 sun/OOB losses: update `README.md` Agents table adding agent_v38 bolded as new best, and update `AGENT` and `RENDER_AGENT` variables in `Makefile` to `agent_v38.py`
 
 **Checkpoint**: agent_v38 promoted (or failed with root-cause documented) → ready for leaderboard submission
 
@@ -102,8 +102,8 @@
 
 **Independent Test**: A submission ID and score appear in SUBMISSIONS.md after the manual submission step.
 
-- [ ] T026 [US3] Manually submit the promoted agent to the Kaggle leaderboard via `make submit`; confirm submission ID is returned
-- [ ] T027 [US3] Record submission result in `SUBMISSIONS.md` — submission ID, agent version, score, date, delta vs prior best (agent_v8: 639.0), and any regression notes
+- [X] T026 [US3] Manually submit the promoted agent to the Kaggle leaderboard via `make submit`; confirm submission ID is returned
+- [X] T027 [US3] Record submission result in `SUBMISSIONS.md` — submission ID, agent version, score, date, delta vs prior best (agent_v8: 639.0), and any regression notes
 
 **Checkpoint**: Submission recorded → feature complete
 
@@ -111,8 +111,8 @@
 
 ## Final Phase: Polish & Cross-Cutting Concerns
 
-- [ ] T028 [P] If agent_v38 is promoted, add its description to the "How It Works" section in `README.md` (follow the existing pattern: one paragraph per agent explaining strategy and win rate)
-- [ ] T029 If no candidate passes ≥55% in Round 6, write revised hypothesis set for Round 7 in `experiments/010-round6-retrospective.md` — diagnose failure modes and propose 4 new candidate mechanics; do not close feature until hypotheses are documented
+- [X] T028 [P] If agent_v38 is promoted, add its description to the "How It Works" section in `README.md` (follow the existing pattern: one paragraph per agent explaining strategy and win rate)
+- [X] T029 If no candidate passes ≥55% in Round 6, write revised hypothesis set for Round 7 in `experiments/010-round6-retrospective.md` — diagnose failure modes and propose 4 new candidate mechanics; do not close feature until hypotheses are documented
 
 ---
 

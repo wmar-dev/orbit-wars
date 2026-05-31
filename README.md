@@ -46,7 +46,12 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v30.py` | Combined: lower garrison floor + no range limit | 75% score vs v20 (20 games), 100% 4P win rate, 0 sun/OOB losses |
 | `agent_v31.py` | + Reward-blend target scoring (Candidate S, REWARD_ALPHA=0.1) | 61% score vs v30 (50 games) |
 | `agent_v32.py` | Bug fixes: converged orbit-lead + comet evacuation from documented fields | 64% score vs v31 (50 games) |
-| **`agent_v33.py`** | **+ Production-squared ROI (Candidate R, passed on bug-fixed baseline)** | **60% score vs v32 (50 games)** |
+| `agent_v33.py` | + Production-squared ROI (Candidate R, passed on bug-fixed baseline) | 60% score vs v32 (50 games) |
+| `agent_v34.py` | + Cross-turn fleet deduplication (Candidate S R6) | 4% score vs v33 (50 games) — FAIL |
+| `agent_v35.py` | + Transit-adjusted fleet sizing (Candidate T R6) | 0% score vs v33 (50 games) — FAIL |
+| `agent_v36.py` | + Threat-aware garrison floor (Candidate U R6) | 86% score vs v33 (50 games) |
+| `agent_v37.py` | + Winning-state garrison reduction (Candidate V R6) | 50% score vs v33 (50 draws) — FAIL |
+| **`agent_v38.py`** | **Combined R6: threat-aware garrison floor (Candidate U only)** | **86% score vs v33 (50 games), 0 sun/OOB losses** |
 
 ## How It Works
 
@@ -80,7 +85,9 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 
 **`agent_v15.py`**: Stacks all mechanics that passed ≥55% vs agent_v10. Only Candidate D passed; agent_v15 is functionally equivalent to agent_v14. Achieves 70% win rate vs agent_v10 with 0 sun losses and 0 OOB losses across 20 diagnostic games.
 
-**`agent_v20.py`** (Combined — current best): Fixes the orbit-lead speed bug (fleet travel time was computed from source planet's full ship count, not the actual launched fleet size) and adds ROI-based target scoring. Achieves 75% win rate vs agent_v15 with 0 sun/OOB losses across 20 diagnostic games.
+**`agent_v20.py`**: Fixes the orbit-lead speed bug (fleet travel time was computed from source planet's full ship count, not the actual launched fleet size) and adds ROI-based target scoring. Achieves 75% win rate vs agent_v15 with 0 sun/OOB losses across 20 diagnostic games.
+
+**`agent_v38.py`** (Combined R6 — current best): Adds threat-aware garrison floor (Candidate U). Parses `obs.fleets` to detect enemy fleets heading toward owned planets using angle-matching (0.1 rad threshold) and raises the garrison floor for threatened planets to `max(3×production, incoming_enemy_ships)`. Prevents the agent from draining a planet's garrison offensively right before an enemy fleet arrives and captures it — no defensive dispatch overhead added. Achieves 86% score vs agent_v33 with 0 sun/OOB losses across 50 diagnostic games. Three other Round 6 candidates failed: fleet deduplication (4%) was too aggressive on angle-matching, transit-adjusted sizing (0%) over-estimated ships needed, and winning-state throttle (50% draws) never triggered at the 2:1 ratio.
 
 See [specs/003-agent-gap-analysis/](specs/003-agent-gap-analysis/) for the full design documents and [experiments/](experiments/) for per-experiment results.
 
