@@ -54,7 +54,8 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v38.py` | Combined R6: threat-aware garrison floor (Candidate U only) | 86% score vs v33 (50 games), 0 sun/OOB losses |
 | `agent_v40.py` | + Race-condition fleet scaling, production-weighted sender assignment, banking mode (B-C variant) | 46% win rate vs v38 (50 games); +11.6% avg final ships vs v38 (20 games) |
 | `agent_v41.py` | Clean refactor with helper.py module split | 52% vs v38; Kaggle score 755.1 |
-| **`agent_v42.py`** | **+ Dynamic garrison floor: ramps 1x->4x over steps 0-300 (replaces static 3x)** | **54% win rate vs v38 (50 games); 60% win rate vs v40 (50 games)** |
+| `agent_v42.py` | + Dynamic garrison floor: ramps 1x->4x over steps 0-300 (replaces static 3x) | 54% win rate vs v38 (50 games); 60% win rate vs v40 (50 games) |
+| **`agent_v47.py`** | **+ Production-adjusted fleet sizing for enemy planets (correct garrison at arrival; orbit-lead recomputed at actual fleet speed)** | **68% win rate vs v42 (50 games); 72% win rate vs v38 (50 games)** |
 
 ## How It Works
 
@@ -92,7 +93,9 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 
 **`agent_v38.py`**: Adds threat-aware garrison floor (Candidate U). Parses `obs.fleets` to detect enemy fleets heading toward owned planets using angle-matching (0.1 rad threshold) and raises the garrison floor for threatened planets to `max(3×production, incoming_enemy_ships)`. Prevents the agent from draining a planet's garrison offensively right before an enemy fleet arrives and captures it — no defensive dispatch overhead added. Achieves 86% score vs agent_v33 with 0 sun/OOB losses across 50 diagnostic games.
 
-**`agent_v41.py`** (current best): Clean refactor of agent_v40 using `helper.py` — a standalone pure-function module containing all game-mechanics calculations (fleet speed, orbit-lead, comet intercept, path safety, ROI scoring, threat detection, banking mode). `agent_v41.py` is 197 lines vs 477 in v40; dead code removed (variant flags, unused sets). All proven mechanics unchanged. Achieves 52% win rate vs agent_v38 and 52% win / 56% score vs agent_v40 across 50 games each.
+**`agent_v41.py`**: Clean refactor of agent_v40 using `helper.py` — a standalone pure-function module containing all game-mechanics calculations (fleet speed, orbit-lead, comet intercept, path safety, ROI scoring, threat detection, banking mode). `agent_v41.py` is 197 lines vs 477 in v40; dead code removed (variant flags, unused sets). All proven mechanics unchanged. Achieves 52% win rate vs agent_v38 and 52% win / 56% score vs agent_v40 across 50 games each.
+
+**`agent_v47.py`** (current best): Fixes the fleet sizing bug for enemy-owned planets. Game engine analysis revealed that neutral planets have **static garrison** (production only applies to owned planets), but enemy planets accumulate `production × travel_turns` ships while our fleet is in transit. Sending `target.ships + 1` ships was always enough for neutrals but systematically too few for enemy planets — the fleet would deal damage without capturing. Fix: compute garrison at estimated arrival time (`target.ships + target.production × travel + 1`) and recompute the orbit-lead with the actual (larger, faster) fleet speed, since a faster fleet arrives when the planet is at a different orbital position. Achieves 68% win rate vs agent_v42 and 72% win rate vs agent_v38 across 50 games each.
 
 See [specs/003-agent-gap-analysis/](specs/003-agent-gap-analysis/) for the full design documents and [experiments/](experiments/) for per-experiment results.
 
