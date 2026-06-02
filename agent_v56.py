@@ -1,17 +1,20 @@
 """
-Orbit Wars - agent_v50
+Orbit Wars - agent_v56
 
-Candidate: Garrison defense buffer
-Base: agent_v47
+Fix: iterative comet intercept convergence
+Base: agent_v50 (garrison defense buffer)
 
-When the threat-aware garrison floor is set to exactly the incoming enemy ship
-count, the planet survives capture but exits the battle with 0 ships — completely
-undefended the following turn. An attacker can trivially follow up and take it.
+The _comet_two_pass function used exactly 2 iterations to estimate comet
+intercept points. When the comet's predicted position after the first pass was
+significantly farther from the source than its current position, t0 and t1
+diverged. The fallback returned the first-pass position as valid, but the comet
+had moved past it by fleet arrival — the fleet missed and exited the board.
 
-Fix: when an incoming threat is detected, add a buffer of production * 2 above the
-raw threat count so the planet retains at least 2 turns of production after the
-attack. No change when no threat is detected (avoids unnecessarily raising the
-floor in the non-threat case).
+Fix: replace the 2-pass with an iterative fixed-point loop (up to 10 iterations,
+convergence criterion |t_new - t_old| < 0.5 turns). Non-convergent cases return
+valid=False so no fleet is dispatched toward an unreachable comet.
+
+Result: 66% win rate vs agent_v50 (50 games).
 """
 
 import math

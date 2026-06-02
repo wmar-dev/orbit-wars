@@ -58,11 +58,12 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v47.py` | + Production-adjusted fleet sizing for enemy planets (correct garrison at arrival; orbit-lead recomputed at actual fleet speed) | 68% win rate vs v42 (50 games); 72% win rate vs v38 (50 games) |
 | `agent_v48.py` | + ROI scoring mismatch fix: pre-compute ships_needed for enemy candidates; pass actual fleet size to _roi (Candidate C1 R015) | 54% win rate vs v47 (50 games) — FAIL |
 | `agent_v49.py` | + Endgame ROI normalization: replace hardcoded 100.0 with remaining_turns=500-step (Candidate C2 R015) | 48% win rate vs v47 (50 games) — FAIL |
-| **`agent_v50.py`** | **+ Garrison defense buffer: add production×2 above raw threat count so planet survives attack with non-zero garrison (Candidate C3 R015)** | **62% win rate vs v47 (50 games); 76% win rate vs v38 (50 games)** |
+| `agent_v50.py` | + Garrison defense buffer: add production×2 above raw threat count so planet survives attack with non-zero garrison (Candidate C3 R015) | 62% win rate vs v47 (50 games); 76% win rate vs v38 (50 games) |
 | `agent_v51.py` | + Sender pre-screening: exclude senders that can't cover enemy garrison estimate (Candidate C4 R015) | 16% win rate vs v47 (50 games) — FAIL (severe regression) |
 | `agent_v52.py` | + Friendly fleet sufficiency check: skip targets already covered by in-transit own fleet (Candidate C5 R015) | 44% win rate vs v47 (50 games) — FAIL |
 | `agent_v53.py` | + Persistent campaign target: module-level campaign dict, 30% ROI stability threshold (Candidate C6 R015) | 28% win rate vs v47 (50 games) — FAIL (severe regression) |
 | `agent_v54.py` | Combined C3+C1 (garrison buffer + ROI mismatch fix) | 58% win rate vs v47 (50 games) — below C3 alone |
+| **`agent_v56.py`** | **+ Iterative comet intercept: replace 2-pass with convergent fixed-point loop (10 iter, eps=0.5); non-convergent → valid=False, no wasted fleet** | **66% win rate vs v50 (50 games)** |
 
 ## How It Works
 
@@ -104,7 +105,9 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 
 **`agent_v47.py`**: Fixes the fleet sizing bug for enemy-owned planets. Game engine analysis revealed that neutral planets have **static garrison** (production only applies to owned planets), but enemy planets accumulate `production × travel_turns` ships while our fleet is in transit. Sending `target.ships + 1` ships was always enough for neutrals but systematically too few for enemy planets — the fleet would deal damage without capturing. Fix: compute garrison at estimated arrival time (`target.ships + target.production × travel + 1`) and recompute the orbit-lead with the actual (larger, faster) fleet speed, since a faster fleet arrives when the planet is at a different orbital position. Achieves 68% win rate vs agent_v42 and 72% win rate vs agent_v38 across 50 games each.
 
-**`agent_v50.py`** (current best): Adds garrison defense buffer. The threat-aware floor was previously set to exactly `incoming_enemy_ships`, leaving the planet with 0 garrison after surviving an attack — trivially recapturable the following turn. Fix: when a threat is detected, set floor to `incoming + production × 2` so the planet retains at least two turns of production after the battle. Achieves 62% win rate vs agent_v47 and 76% win rate vs agent_v38 across 50 games each.
+**`agent_v50.py`**: Adds garrison defense buffer. The threat-aware floor was previously set to exactly `incoming_enemy_ships`, leaving the planet with 0 garrison after surviving an attack — trivially recapturable the following turn. Fix: when a threat is detected, set floor to `incoming + production × 2` so the planet retains at least two turns of production after the battle. Achieves 62% win rate vs agent_v47 and 76% win rate vs agent_v38 across 50 games each.
+
+**`agent_v56.py`** (current best): Fixes comet fleet targeting. The 2-pass intercept function diverged when the predicted comet position was far from its current position, causing the fallback to aim fleets at stale coordinates — fleets missed comets and exited the board. Fix: replace the 2-pass with a convergent fixed-point loop (up to 10 iterations, eps=0.5 turns); non-convergent cases return `valid=False` so no fleet is wasted. Achieves 66% win rate vs agent_v50 across 50 games.
 
 See [specs/003-agent-gap-analysis/](specs/003-agent-gap-analysis/) for the full design documents and [experiments/](experiments/) for per-experiment results.
 

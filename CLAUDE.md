@@ -5,5 +5,5 @@ After creating a new agent file or recording eval results, always update the Age
 <!-- SPECKIT START -->
 ## Current Feature
 
-Active implementation plan: [specs/014-agent-round-015/plan.md](specs/014-agent-round-015/plan.md)
+Active implementation plan: [specs/015-fix-fleet-targeting/plan.md](specs/015-fix-fleet-targeting/plan.md)
 <!-- SPECKIT END -->
