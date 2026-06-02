@@ -6,8 +6,10 @@ Last updated: 2026-06-02
 
 | ref | file | date | description | score |
 | --- | ---- | ---- | ----------- | ----- |
-| 53275661 | agent_v50.tar.gz | 2026-06-02 03:49 | agent_v50: garrison defense buffer — 62% vs v47, 76% vs v38 | **846.0** |
-| 53260213 | agent_v47.tar.gz | 2026-06-01 15:47 | agent_v47: production-adjusted fleet sizing for enemy planets (68% vs v42 locally) | 829.5 |
+| 53290784 | agent_v57.tar.gz | 2026-06-02 12:48 | agent_v57: fix orbit lead launch offset + path safety for both-orbiting scenarios (61% vs v56) | 828.7 |
+| 53280168 | agent_v56.tar.gz | 2026-06-02 06:47 | agent_v56: fix comet intercept convergence (66% vs v50) | **853.2** |
+| 53275661 | agent_v50.tar.gz | 2026-06-02 03:49 | agent_v50: garrison defense buffer — 62% vs v47, 76% vs v38 | 828.4 |
+| 53260213 | agent_v47.tar.gz | 2026-06-01 15:47 | agent_v47: production-adjusted fleet sizing for enemy planets (68% vs v42 locally) | 831.0 |
 | 53227491 | agent_v41.tar.gz | 2026-05-31 17:44 | agent_v41: clean refactor with helper.py, 52% vs v38 | 776.9 |
 | 53226709 | agent_v40.py | 2026-05-31 17:16 | agent_v40: race-condition fleet scaling, production-weighted scoring, banking mode (+11.6% avg ships vs v38) | 709.4 |
 | 53199985 | agent_v38.py | 2026-05-31 01:04 | threat-aware garrison floor (Candidate U), 86% vs v33 | 772.0 |
