@@ -63,7 +63,8 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v52.py` | + Friendly fleet sufficiency check: skip targets already covered by in-transit own fleet (Candidate C5 R015) | 44% win rate vs v47 (50 games) — FAIL |
 | `agent_v53.py` | + Persistent campaign target: module-level campaign dict, 30% ROI stability threshold (Candidate C6 R015) | 28% win rate vs v47 (50 games) — FAIL (severe regression) |
 | `agent_v54.py` | Combined C3+C1 (garrison buffer + ROI mismatch fix) | 58% win rate vs v47 (50 games) — below C3 alone |
-| **`agent_v56.py`** | **+ Iterative comet intercept: replace 2-pass with convergent fixed-point loop (10 iter, eps=0.5); non-convergent → valid=False, no wasted fleet** | **66% win rate vs v50 (50 games)** |
+| `agent_v56.py` | + Iterative comet intercept: replace 2-pass with convergent fixed-point loop (10 iter, eps=0.5); non-convergent → valid=False, no wasted fleet | 66% win rate vs v50 (50 games) |
+| **`agent_v57.py`** | **Fix A: launch-offset correction in orbit lead (_launch_corrected_orbit_lead re-runs from actual fleet launch position); Fix B: path safety uses predicted intermediate planet positions at flight midpoint** | **61% win rate vs v56 (200 games)** |
 
 ## How It Works
 
@@ -107,7 +108,9 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 
 **`agent_v50.py`**: Adds garrison defense buffer. The threat-aware floor was previously set to exactly `incoming_enemy_ships`, leaving the planet with 0 garrison after surviving an attack — trivially recapturable the following turn. Fix: when a threat is detected, set floor to `incoming + production × 2` so the planet retains at least two turns of production after the battle. Achieves 62% win rate vs agent_v47 and 76% win rate vs agent_v38 across 50 games each.
 
-**`agent_v56.py`** (current best): Fixes comet fleet targeting. The 2-pass intercept function diverged when the predicted comet position was far from its current position, causing the fallback to aim fleets at stale coordinates — fleets missed comets and exited the board. Fix: replace the 2-pass with a convergent fixed-point loop (up to 10 iterations, eps=0.5 turns); non-convergent cases return `valid=False` so no fleet is wasted. Achieves 66% win rate vs agent_v50 across 50 games.
+**`agent_v56.py`**: Fixes comet fleet targeting. The 2-pass intercept function diverged when the predicted comet position was far from its current position, causing the fallback to aim fleets at stale coordinates — fleets missed comets and exited the board. Fix: replace the 2-pass with a convergent fixed-point loop (up to 10 iterations, eps=0.5 turns); non-convergent cases return `valid=False` so no fleet is wasted. Achieves 66% win rate vs agent_v50 across 50 games.
+
+**`agent_v57.py`** (current best): Fixes fleet targeting when both source and target are orbiting. Fix A: the orbit lead previously used the planet center as the launch origin, but the game engine launches fleets from `planet.center + direction × (radius + 0.1)` — a new `_launch_corrected_orbit_lead` wrapper re-runs the orbit lead from the actual launch position after a first-pass direction estimate. Fix B: `_path_safe` now predicts intermediate orbiting planet positions at the midpoint of the fleet's travel time rather than using current positions, eliminating false-negative dispatch blocks when intermediate planets happen to be in the current line-of-sight but will have moved by arrival. Achieves 61% win rate vs agent_v56 across 200 games.
 
 See [specs/003-agent-gap-analysis/](specs/003-agent-gap-analysis/) for the full design documents and [experiments/](experiments/) for per-experiment results.
 
