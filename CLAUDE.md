@@ -5,5 +5,5 @@ After creating a new agent file or recording eval results, always update the Age
 <!-- SPECKIT START -->
 ## Current Feature
 
-Active implementation plan: [specs/016-planet-wars-winner-strategies/plan.md](specs/016-planet-wars-winner-strategies/plan.md)
+Active implementation plan: [specs/017-fix-moving-planet-targeting/plan.md](specs/017-fix-moving-planet-targeting/plan.md)
 <!-- SPECKIT END -->
