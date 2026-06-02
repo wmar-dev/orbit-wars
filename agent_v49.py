@@ -1,17 +1,18 @@
 """
-Orbit Wars - agent_v50
+Orbit Wars - agent_v49
 
-Candidate: Garrison defense buffer
+Candidate: Endgame ROI normalization
 Base: agent_v47
 
-When the threat-aware garrison floor is set to exactly the incoming enemy ship
-count, the planet survives capture but exits the battle with 0 ships — completely
-undefended the following turn. An attacker can trivially follow up and take it.
+The ROI time-decay term uses a hardcoded max(1.0, 100.0 - travel). In the final
+100 turns of a 500-turn game, a planet 40 travel-turns away has only 60 turns of
+production remaining, but the formula behaves as if there are 100. This causes
+over-investment in distant captures that deliver little value before time runs out.
 
-Fix: when an incoming threat is detected, add a buffer of production * 2 above the
-raw threat count so the planet retains at least 2 turns of production after the
-attack. No change when no threat is detected (avoids unnecessarily raising the
-floor in the non-threat case).
+Fix: replace 100.0 with remaining_turns = max(1.0, 500.0 - step), computed in
+agent() and passed into _roi. Late-game, far targets are correctly penalized.
+Early-game (turns 0-400), remaining_turns >= 100 so the formula is unchanged
+in relative ordering (all values scale up proportionally).
 """
 
 import math
@@ -161,9 +162,9 @@ def _comet_two_pass(comet_planet, mine_x, mine_y, comet_path_lookup, speed):
     return x1, y1, True
 
 
-def _roi(t, bx, by, mine):
+def _roi(t, bx, by, mine, remaining_turns=100.0):
     travel = math.hypot(bx - mine.x, by - mine.y) / fleet_speed(t.ships + 1)
-    return (t.production ** 2) * max(1.0, 100.0 - travel) / max(1.0, t.ships + t.production * travel + 1)
+    return (t.production ** 2) * max(1.0, remaining_turns - travel) / max(1.0, t.ships + t.production * travel + 1)
 
 
 def _reward_estimate(target, dispatch_ships):
@@ -216,6 +217,7 @@ def agent(obs):
     raw_fleets = obs.get("fleets", []) if isinstance(obs, dict) else getattr(obs, "fleets", [])
     step = obs.get("step", 0) if isinstance(obs, dict) else getattr(obs, "step", 0)
     GARRISON_FLOOR_FACTOR = 1.0 + 3.0 * min(step / 300.0, 1.0)
+    remaining_turns = max(1.0, 500.0 - step)
 
     planets = [Planet(*p) for p in raw_planets]
     my_planets = [p for p in planets if p.owner == player]
@@ -263,9 +265,7 @@ def agent(obs):
         for src in my_planets:
             if src.id in departing_this_turn:
                 continue
-            incoming = threat.get(src.id, 0)
-            buffer = src.production * 2 if incoming > 0 else 0
-            floor = max(src.production * GARRISON_FLOOR_FACTOR, incoming + buffer)
+            floor = max(src.production * GARRISON_FLOOR_FACTOR, threat.get(src.id, 0))
             surplus = src.ships - floor
             if surplus <= 0:
                 continue
@@ -306,7 +306,7 @@ def agent(obs):
                 if p.owner == player:
                     score = p.production / (math.hypot(mine.x - x_pred, mine.y - y_pred) + EPSILON)
                 else:
-                    score = _roi(p, x_pred, y_pred, mine)
+                    score = _roi(p, x_pred, y_pred, mine, remaining_turns=remaining_turns)
 
                 if score > best_evac_score:
                     best_evac_score = score
@@ -339,7 +339,8 @@ def agent(obs):
         if not candidates:
             continue
 
-        roi_scores = [(_roi(t, bx, by, mine), t, bx, by) for t, bx, by in candidates]
+        roi_scores = [(_roi(t, bx, by, mine, remaining_turns=remaining_turns), t, bx, by)
+                      for t, bx, by in candidates]
         max_roi = max(r for r, _, _, _ in roi_scores) or 1.0
 
         def blended_key(item, _max_roi=max_roi):

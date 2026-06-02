@@ -1,17 +1,17 @@
 """
-Orbit Wars - agent_v50
+Orbit Wars - agent_v51
 
-Candidate: Garrison defense buffer
+Candidate: Sender pre-screening for enemy targets
 Base: agent_v47
 
-When the threat-aware garrison floor is set to exactly the incoming enemy ship
-count, the planet survives capture but exits the battle with 0 ships — completely
-undefended the following turn. An attacker can trivially follow up and take it.
+The sender assignment loop picks the planet with best dist/surplus ratio.
+For enemy targets, the selected sender may not have enough total ships to
+cover the production-adjusted garrison at arrival, causing the attack to be
+silently dropped later with no fallback sender attempted.
 
-Fix: when an incoming threat is detected, add a buffer of production * 2 above the
-raw threat count so the planet retains at least 2 turns of production after the
-attack. No change when no threat is detected (avoids unnecessarily raising the
-floor in the non-threat case).
+Fix: during sender selection, for enemy targets compute a rough ships_needed
+using the current (non-orbit-lead) target position. Exclude senders whose
+total garrison is less than this estimate. Neutral target behavior unchanged.
 """
 
 import math
@@ -263,13 +263,16 @@ def agent(obs):
         for src in my_planets:
             if src.id in departing_this_turn:
                 continue
-            incoming = threat.get(src.id, 0)
-            buffer = src.production * 2 if incoming > 0 else 0
-            floor = max(src.production * GARRISON_FLOOR_FACTOR, incoming + buffer)
+            floor = max(src.production * GARRISON_FLOOR_FACTOR, threat.get(src.id, 0))
             surplus = src.ships - floor
             if surplus <= 0:
                 continue
             dist = math.hypot(src.x - t.x, src.y - t.y)
+            if t.owner != -1:
+                naive_travel = dist / fleet_speed(t.ships + 1)
+                rough_needed = int(t.ships + t.production * naive_travel) + 1
+                if src.ships < rough_needed:
+                    continue
             score = dist / max(surplus, 1)
             if score < best_score:
                 best_score = score

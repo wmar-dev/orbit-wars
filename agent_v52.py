@@ -1,17 +1,20 @@
 """
-Orbit Wars - agent_v50
+Orbit Wars - agent_v52
 
-Candidate: Garrison defense buffer
+Candidate: Friendly fleet sufficiency check
 Base: agent_v47
 
-When the threat-aware garrison floor is set to exactly the incoming enemy ship
-count, the planet survives capture but exits the battle with 0 ships — completely
-undefended the following turn. An attacker can trivially follow up and take it.
+When a friendly fleet already in transit to a target has enough ships to capture
+it, dispatching a second fleet wastes ships. The agent currently re-evaluates
+all targets from scratch each turn with no awareness of in-transit friendly fleets.
 
-Fix: when an incoming threat is detected, add a buffer of production * 2 above the
-raw threat count so the planet retains at least 2 turns of production after the
-attack. No change when no threat is detected (avoids unnecessarily raising the
-floor in the non-threat case).
+Fix: build covered_targets set each turn by scanning own fleets. For each own
+fleet, check if its angle aligns (within ANGLE_EPSILON) to a target's current
+position. If aligned and the fleet has enough ships to cover the target's rough
+garrison, mark that target as covered. Skip covered targets in sender assignment.
+
+Note: "committed ships" are NOT subtracted from garrison (the game engine already
+deducts ships from garrison upon dispatch — subtracting again would double-count).
 """
 
 import math
@@ -239,6 +242,27 @@ def agent(obs):
             if _angle_diff(f_angle, expected) < ANGLE_EPSILON:
                 threat[p.id] = threat.get(p.id, 0) + f_ships
 
+    covered_targets = set()
+    for f in raw_fleets:
+        if isinstance(f, (list, tuple)):
+            f_owner, f_x, f_y, f_angle, f_ships = f[1], float(f[2]), float(f[3]), float(f[4]), int(f[6])
+        else:
+            f_owner, f_x, f_y, f_angle, f_ships = f.owner, f.x, f.y, f.angle, f.ships
+        if f_owner != player:
+            continue
+        for t in targets:
+            expected = math.atan2(t.y - f_y, t.x - f_x)
+            if _angle_diff(f_angle, expected) >= ANGLE_EPSILON:
+                continue
+            if t.owner == -1:
+                rough_needed = t.ships + 1
+            else:
+                naive_dist = math.hypot(f_x - t.x, f_y - t.y)
+                naive_travel = naive_dist / fleet_speed(t.ships + 1)
+                rough_needed = int(t.ships + t.production * naive_travel) + 1
+            if f_ships >= rough_needed:
+                covered_targets.add(t.id)
+
     comet_path_lookup = _build_comet_path_lookup(obs)
     comet_planet_ids = set(comet_path_lookup.keys())
 
@@ -258,14 +282,14 @@ def agent(obs):
 
     best_sender = {}
     for t in targets:
+        if t.id in covered_targets:
+            continue
         best_score = float('inf')
         best_pid = None
         for src in my_planets:
             if src.id in departing_this_turn:
                 continue
-            incoming = threat.get(src.id, 0)
-            buffer = src.production * 2 if incoming > 0 else 0
-            floor = max(src.production * GARRISON_FLOOR_FACTOR, incoming + buffer)
+            floor = max(src.production * GARRISON_FLOOR_FACTOR, threat.get(src.id, 0))
             surplus = src.ships - floor
             if surplus <= 0:
                 continue

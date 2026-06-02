@@ -1,17 +1,15 @@
 """
-Orbit Wars - agent_v50
+Orbit Wars - agent_v54
 
-Candidate: Garrison defense buffer
+Combined: C3 (garrison defense buffer) + C1 (ROI scoring mismatch fix)
 Base: agent_v47
 
-When the threat-aware garrison floor is set to exactly the incoming enemy ship
-count, the planet survives capture but exits the battle with 0 ships — completely
-undefended the following turn. An attacker can trivially follow up and take it.
+C3: garrison defense buffer — adds production*2 buffer above raw threat count
+so planets retain meaningful garrison after surviving an attack.
 
-Fix: when an incoming threat is detected, add a buffer of production * 2 above the
-raw threat count so the planet retains at least 2 turns of production after the
-attack. No change when no threat is detected (avoids unnecessarily raising the
-floor in the non-threat case).
+C1: ROI scoring mismatch fix — pre-computes ships_needed for enemy candidates
+upfront and passes actual_fleet_size to _roi so travel time reflects the larger
+(faster) fleet actually dispatched to enemy planets.
 """
 
 import math
@@ -161,8 +159,9 @@ def _comet_two_pass(comet_planet, mine_x, mine_y, comet_path_lookup, speed):
     return x1, y1, True
 
 
-def _roi(t, bx, by, mine):
-    travel = math.hypot(bx - mine.x, by - mine.y) / fleet_speed(t.ships + 1)
+def _roi(t, bx, by, mine, actual_fleet_size=None):
+    n = actual_fleet_size if actual_fleet_size is not None else t.ships + 1
+    travel = math.hypot(bx - mine.x, by - mine.y) / fleet_speed(n)
     return (t.production ** 2) * max(1.0, 100.0 - travel) / max(1.0, t.ships + t.production * travel + 1)
 
 
@@ -319,6 +318,8 @@ def agent(obs):
             moves.append([mine.id, angle, mine.ships])
             continue
 
+        # Pre-process candidates: resolve ships_needed and corrected positions upfront
+        # so ROI scoring uses actual fleet speed (C1 fix).
         candidates = []
         for t in targets:
             if best_sender.get(t.id) != mine.id:
@@ -333,36 +334,34 @@ def agent(obs):
             else:
                 x_pred, y_pred = _converged_orbit_lead(t, mine, initial_planets_map, angular_velocity, speed_for_lead)
 
-            if _path_safe(mine.x, mine.y, x_pred, y_pred, all_planets=planets, target_id=t.id, source_id=mine.id):
-                candidates.append((t, x_pred, y_pred))
+            if t.owner == -1:
+                sn = t.ships + 1
+                if _path_safe(mine.x, mine.y, x_pred, y_pred, all_planets=planets,
+                               target_id=t.id, source_id=mine.id):
+                    candidates.append((t, x_pred, y_pred, sn))
+            else:
+                sn, xc, yc = _enemy_fleet_size(t, x_pred, y_pred, mine.x, mine.y,
+                                                initial_planets_map, angular_velocity)
+                if _path_safe(mine.x, mine.y, xc, yc, all_planets=planets,
+                               target_id=t.id, source_id=mine.id):
+                    candidates.append((t, xc, yc, sn))
 
         if not candidates:
             continue
 
-        roi_scores = [(_roi(t, bx, by, mine), t, bx, by) for t, bx, by in candidates]
-        max_roi = max(r for r, _, _, _ in roi_scores) or 1.0
+        roi_scores = [(_roi(t, bx, by, mine, actual_fleet_size=sn), t, bx, by, sn)
+                      for t, bx, by, sn in candidates]
+        max_roi = max(r for r, _, _, _, _ in roi_scores) or 1.0
 
         def blended_key(item, _max_roi=max_roi):
-            roi, t, bx, by = item
+            roi, t, bx, by, sn = item
             roi_norm = roi / _max_roi
             r_est = _reward_estimate(t, t.ships + 1)
             return (1.0 - REWARD_ALPHA) * roi_norm + REWARD_ALPHA * r_est
 
-        best_roi, best_target, bx, by = max(roi_scores, key=blended_key)
+        best_roi, best_target, bx, by, ships_needed = max(roi_scores, key=blended_key)
 
-        # Fleet sizing: neutrals have static garrison; enemy planets accumulate ships
-        if best_target.owner == -1:
-            ships_needed = best_target.ships + 1
-        else:
-            # Production-adjusted fleet size with orbit-lead correction for orbiting planets
-            ships_needed, bx, by = _enemy_fleet_size(
-                best_target, bx, by, mine.x, mine.y, initial_planets_map, angular_velocity
-            )
-            # Re-validate path safety for corrected position
-            if not _path_safe(mine.x, mine.y, bx, by, all_planets=planets,
-                               target_id=best_target.id, source_id=mine.id):
-                continue
-
+        # ships_needed and corrected position already resolved during candidate building.
         if mine.ships < ships_needed:
             continue
 

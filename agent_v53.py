@@ -1,17 +1,19 @@
 """
-Orbit Wars - agent_v50
+Orbit Wars - agent_v53
 
-Candidate: Garrison defense buffer
+Candidate: Persistent campaign target
 Base: agent_v47
 
-When the threat-aware garrison floor is set to exactly the incoming enemy ship
-count, the planet survives capture but exits the battle with 0 ships — completely
-undefended the following turn. An attacker can trivially follow up and take it.
+The agent re-scores all targets from scratch each turn. ROI fluctuations as
+ship counts and orbital positions change can cause a planet to switch its
+assigned target turn-to-turn, sending partial fleets to multiple targets in
+sequence — none large enough to capture.
 
-Fix: when an incoming threat is detected, add a buffer of production * 2 above the
-raw threat count so the planet retains at least 2 turns of production after the
-attack. No change when no threat is detected (avoids unnecessarily raising the
-floor in the non-threat case).
+Fix: a module-level _campaign dict maps planet_id -> (target_id, roi_at_assignment).
+A campaign persists until: (1) the target is captured by the player, (2) the target
+no longer exists, or (3) a new target with >30% higher ROI appears. In all other
+cases, the planet re-uses its campaign target without re-scoring. New campaigns are
+recorded after each successful dispatch.
 """
 
 import math
@@ -207,7 +209,11 @@ def _enemy_fleet_size(t, x_pred, y_pred, mine_x, mine_y, initial_planets_map, an
     return ships_needed, x_pred, y_pred
 
 
+_campaign = {}  # planet_id -> (target_id, roi_at_assignment)
+
+
 def agent(obs):
+    global _campaign
     moves = []
     player = obs.get("player", 0) if isinstance(obs, dict) else obs.player
     raw_planets = obs.get("planets", []) if isinstance(obs, dict) else obs.planets
@@ -256,6 +262,23 @@ def agent(obs):
     if not my_planets or not targets:
         return moves
 
+    # Prune campaigns for planets we no longer own.
+    my_planet_ids = {p.id for p in my_planets}
+    target_ids = {t.id for t in targets}
+    for pid in list(_campaign.keys()):
+        if pid not in my_planet_ids:
+            del _campaign[pid]
+        else:
+            tid, _ = _campaign[pid]
+            # Clear if target captured by us or no longer exists.
+            if tid not in target_ids:
+                del _campaign[pid]
+
+    # Planets with active campaigns lock in their target without re-scoring.
+    campaign_locked = {}  # planet_id -> target_id
+    for pid, (tid, _) in list(_campaign.items()):
+        campaign_locked[pid] = tid
+
     best_sender = {}
     for t in targets:
         best_score = float('inf')
@@ -263,9 +286,11 @@ def agent(obs):
         for src in my_planets:
             if src.id in departing_this_turn:
                 continue
-            incoming = threat.get(src.id, 0)
-            buffer = src.production * 2 if incoming > 0 else 0
-            floor = max(src.production * GARRISON_FLOOR_FACTOR, incoming + buffer)
+            # If this planet has a campaign lock on a different target, skip it
+            # for normal scoring (it will be handled via its locked target).
+            if src.id in campaign_locked and campaign_locked[src.id] != t.id:
+                continue
+            floor = max(src.production * GARRISON_FLOOR_FACTOR, threat.get(src.id, 0))
             surplus = src.ships - floor
             if surplus <= 0:
                 continue
@@ -350,6 +375,17 @@ def agent(obs):
 
         best_roi, best_target, bx, by = max(roi_scores, key=blended_key)
 
+        # Campaign stability check: if this planet has a campaign for a different
+        # target and the new best ROI is not >30% better, stick with the campaign.
+        if mine.id in _campaign:
+            cam_tid, cam_roi = _campaign[mine.id]
+            if best_target.id != cam_tid and best_roi <= cam_roi * 1.30:
+                # Find the campaign target in candidates; if available use it instead.
+                cam_candidates = [(r, t, bx2, by2) for r, t, bx2, by2 in roi_scores
+                                  if t.id == cam_tid]
+                if cam_candidates:
+                    best_roi, best_target, bx, by = cam_candidates[0]
+
         # Fleet sizing: neutrals have static garrison; enemy planets accumulate ships
         if best_target.owner == -1:
             ships_needed = best_target.ships + 1
@@ -368,6 +404,7 @@ def agent(obs):
 
         angle = math.atan2(by - mine.y, bx - mine.x)
         moves.append([mine.id, angle, ships_needed])
+        _campaign[mine.id] = (best_target.id, best_roi)
 
     return moves
 
