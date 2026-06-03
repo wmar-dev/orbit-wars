@@ -1,25 +1,26 @@
 """
-Orbit Wars - agent_v57
+Orbit Wars - agent_v58
 
-Fix A: Launch-offset correction in orbit lead
-Fix B: Predicted intermediate planet positions in path safety
-Base: agent_v56 (iterative comet intercept convergence)
+Fix: Affordability fallback in targeting loop.
+Base: agent_v57 (launch-offset + path-safety fixes, 61% vs v56)
 
-Fix A — The orbit lead (_converged_orbit_lead) used mine.center as the fleet
-launch origin. The game engine actually launches fleets from
-mine.center + direction * (mine.radius + 0.1). For orbiting targets, this caused
-the fleet to arrive (mine.radius + 0.1) / speed turns early — before the target
-reached the predicted intercept point. Introduced _launch_corrected_orbit_lead
-which re-runs the orbit lead from the actual launch position after a first-pass
-direction estimate.
+Root cause from replay 78539022: the targeting loop selected the highest-ROI
+target unconditionally, then bailed (continue) if the mine lacked ships. This
+caused the agent to sit idle when a cheaper but affordable target existed nearby.
 
-Fix B — _path_safe used current positions of intermediate orbiting planets for
-collision detection. When both source and target are orbiting, intermediate
-orbiting planets that are currently in the path may have moved away by the time
-the fleet reaches that region. Now uses predicted planet positions at the midpoint
-of the fleet's estimated travel time, reducing false-negative dispatch blocks.
+Example (replay seed 1054721759): at step 6, Planet 16 (ROI=27.20, need=31) was
+unaffordable with 22 ships. Planet 8 (ROI=20.38, need=19) was affordable but never
+reached. The mine skipped 6 turns accumulating ships for Planet 16 while the opponent
+captured 2 planets in that window.
 
-Result: 61% win rate vs agent_v56 (200 games).
+Fix: Sort candidates by blended ROI descending, iterate until finding one that:
+  (a) the mine can afford (mine.ships >= ships_needed), AND
+  (b) has blended score >= FALLBACK_MIN_RATIO (0.70) of the best candidate's score.
+Guard (b) prevents chasing cheap low-quality planets just because they're affordable.
+All comet, path-safety, and enemy-fleet-size logic is unchanged.
+
+Result: 58% win rate vs agent_v57 (50 games).
+Experiment B (growth-efficiency scoring): 10% — rejected, distance-blind scoring.
 """
 
 import math
@@ -39,6 +40,7 @@ ORBIT_LEAD_EPS = 0.1
 ORBIT_LEAD_MAX_ITER = 10
 REWARD_ALPHA = 0.1
 ANGLE_EPSILON = 0.1
+FALLBACK_MIN_RATIO = 0.70
 _COMET_INTERCEPT_MAX_ITER = 10
 _COMET_INTERCEPT_EPS = 0.5
 
@@ -386,30 +388,43 @@ def agent(obs):
             r_est = _reward_estimate(t, t.ships + 1)
             return (1.0 - REWARD_ALPHA) * roi_norm + REWARD_ALPHA * r_est
 
-        best_roi, best_target, bx, by = max(roi_scores, key=blended_key)
+        # Iterate candidates from highest to lowest blended score; dispatch to the
+        # first affordable one that meets the quality threshold. The quality guard
+        # prevents chasing cheap low-value planets just because they're affordable
+        # (e.g., a 12-ship planet when the best target is a 30-ship high-growth one).
+        sorted_candidates = sorted(roi_scores, key=blended_key, reverse=True)
+        best_blended = blended_key(sorted_candidates[0]) if sorted_candidates else 0.0
+        dispatched = False
+        for item in sorted_candidates:
+            _, best_target, bx, by = item
+            # Quality guard: only fall back to candidates within FALLBACK_MIN_RATIO of best
+            if blended_key(item) < best_blended * FALLBACK_MIN_RATIO:
+                break
 
-        # Fleet sizing: neutrals have static garrison; enemy planets accumulate ships
-        if best_target.owner == -1:
-            ships_needed = best_target.ships + 1
-        else:
-            # Production-adjusted fleet size with orbit-lead correction for orbiting planets
-            ships_needed, bx, by = _enemy_fleet_size(
-                best_target, bx, by, mine.x, mine.y, initial_planets_map, angular_velocity,
-                mine_radius=mine.radius
-            )
-            # Re-validate path safety for corrected position
-            corrected_travel = math.hypot(bx - mine.x, by - mine.y) / fleet_speed(ships_needed)
-            if not _path_safe(mine.x, mine.y, bx, by, all_planets=planets,
-                               target_id=best_target.id, source_id=mine.id,
-                               initial_planets_map=initial_planets_map,
-                               angular_velocity=angular_velocity, travel_turns=corrected_travel):
+            # Fleet sizing: neutrals have static garrison; enemy planets accumulate ships
+            if best_target.owner == -1:
+                ships_needed = best_target.ships + 1
+            else:
+                # Production-adjusted fleet size with orbit-lead correction for orbiting planets
+                ships_needed, bx, by = _enemy_fleet_size(
+                    best_target, bx, by, mine.x, mine.y, initial_planets_map, angular_velocity,
+                    mine_radius=mine.radius
+                )
+                # Re-validate path safety for corrected position
+                corrected_travel = math.hypot(bx - mine.x, by - mine.y) / fleet_speed(ships_needed)
+                if not _path_safe(mine.x, mine.y, bx, by, all_planets=planets,
+                                   target_id=best_target.id, source_id=mine.id,
+                                   initial_planets_map=initial_planets_map,
+                                   angular_velocity=angular_velocity, travel_turns=corrected_travel):
+                    continue
+
+            if mine.ships < ships_needed:
                 continue
 
-        if mine.ships < ships_needed:
-            continue
-
-        angle = math.atan2(by - mine.y, bx - mine.x)
-        moves.append([mine.id, angle, ships_needed])
+            angle = math.atan2(by - mine.y, bx - mine.x)
+            moves.append([mine.id, angle, ships_needed])
+            dispatched = True
+            break
 
     return moves
 
