@@ -5,5 +5,5 @@ After creating a new agent file or recording eval results, always update the Age
 <!-- SPECKIT START -->
 ## Current Feature
 
-Active implementation plan: [specs/017-fix-moving-planet-targeting/plan.md](specs/017-fix-moving-planet-targeting/plan.md)
+Active implementation plan: [specs/018-replay-neutral-fleet-experiments/plan.md](specs/018-replay-neutral-fleet-experiments/plan.md)
 <!-- SPECKIT END -->
