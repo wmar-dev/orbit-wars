@@ -5,6 +5,6 @@ After creating a new agent file or recording eval results, always update the Age
 <!-- SPECKIT START -->
 ## Current Feature
 
-Active implementation plan: [specs/019-agent-mcts-coordination-defense/plan.md](specs/019-agent-mcts-coordination-defense/plan.md)
+Active implementation plan: [specs/020-game-replay-learning/plan.md](specs/020-game-replay-learning/plan.md)
 
 <!-- SPECKIT END -->
