@@ -6,8 +6,8 @@ Last updated: 2026-06-05
 
 | ref | file | date | description | score |
 | --- | ---- | ---- | ----------- | ----- |
-| 53383127 | agent_v59.tar.gz | 2026-06-05 06:15 | agent_v59: reduce garrison ceiling 4x->2.5x, 60% vs v56 | 797.3 |
-| 53308134 | agent_v58.tar.gz | 2026-06-03 00:53 | agent_v58: affordability fallback fix, 58% vs v57 | 843.0 |
+| 53383127 | agent_v59.tar.gz | 2026-06-05 06:15 | agent_v59: reduce garrison ceiling 4x->2.5x, 60% vs v56 | 791.8 |
+| 53308134 | agent_v58.tar.gz | 2026-06-03 00:53 | agent_v58: affordability fallback fix, 58% vs v57 | 842.0 |
 | 53290784 | agent_v57.tar.gz | 2026-06-02 12:48 | agent_v57: fix orbit lead launch offset + path safety for both-orbiting scenarios (61% vs v56) | 837.5 |
 | 53280168 | agent_v56.tar.gz | 2026-06-02 06:47 | agent_v56: fix comet intercept convergence (66% vs v50) | **852.5** |
 | 53275661 | agent_v50.tar.gz | 2026-06-02 03:49 | agent_v50: garrison defense buffer — 62% vs v47, 76% vs v38 | 828.4 |
