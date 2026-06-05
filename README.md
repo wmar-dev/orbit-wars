@@ -7,8 +7,8 @@ An agent competition for the [Orbit Wars Kaggle environment](https://www.kaggle.
 ```bash
 make install        # install kaggle-environments into .venv
 make test           # run agent_v2.py vs random (smoke test)
-make eval           # run agent_v2.py vs main.py (10 games, ~14s)
-make selfplay       # run agent_v2.py vs itself (symmetric baseline)
+make eval           # run agent vs main.py (10 games, side-alternating)
+make selfplay       # run agent vs itself (symmetric baseline)
 ```
 
 ## Agents
@@ -120,12 +120,26 @@ See [specs/003-agent-gap-analysis/](specs/003-agent-gap-analysis/) for the full 
 
 ## Evaluating Agents
 
+`eval.py` has three subcommands:
+
 ```bash
-# Head-to-head: any two agent files
-uv run python eval.py --agent0 agent_v9.py --agent1 agent_v8.py --games 20 --jobs 4
+# Head-to-head: any two agent files (--swap alternates sides to remove positional bias)
+uv run python eval.py h2h --agent0 agent_v9.py --agent1 agent_v8.py --games 20 --jobs 4 --swap
 
 # With verbose move logging
-uv run python eval.py --agent0 agent_v9.py --agent1 agent_v8.py --games 3 --verbose
+uv run python eval.py h2h --agent0 agent_v9.py --agent1 agent_v8.py --games 3 --verbose
+
+# 4-player: agent in slot 0 vs 3 opponents
+uv run python eval.py 4p --agent agent_v9.py --opponent random --games 20 --jobs 4
+
+# Sweep against all known downloaded opponent agents
+uv run python eval.py opponents --agent agent_v9.py --games 20
+
+# Or use make shortcuts (AGENT defaults to the current best):
+make eval           # h2h vs main.py
+make selfplay       # h2h vs itself
+make eval4p         # 4-player vs random
+make opponents      # sweep all known opponents
 ```
 
 ## Submitting to Kaggle
@@ -136,7 +150,7 @@ Kaggle requires the entry point to be named `main.py` and accepts a `.tar.gz` fo
 
 ```bash
 # 1. Run eval and record results in experiments/
-uv run python eval.py --agent0 agent_vNN.py --agent1 agent_vMM.py --games 50 --jobs 4
+uv run python eval.py h2h --agent0 agent_vNN.py --agent1 agent_vMM.py --games 50 --jobs 4 --swap
 
 # 2. Copy agent to main.py, build archive, and submit
 cp agent_vNN.py main.py
