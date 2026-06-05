@@ -29,8 +29,8 @@ def load_agent(path):
 
 def play_games(our_agent, opp_agent, n_games, swap=True):
     wins = draws = losses = 0
-    env = make("orbit_wars")
     for i in range(n_games):
+        env = make("orbit_wars")  # fresh env each game for different seeds
         # Alternate sides to remove positional bias
         if swap and i % 2 == 1:
             result = env.run([opp_agent, our_agent])
