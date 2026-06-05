@@ -17,9 +17,9 @@
 
 **Purpose**: Create directories and wire up shared utilities used by all scripts.
 
-- [ ] T001 Create `replays/` directory and add it to `.gitignore` (large JSON files, dev-only)
-- [ ] T002 [P] Create `record_replays.py` as an empty CLI stub with argparse skeleton (`--opponent`, `--games`, `--out-dir`, `--our-agent`) at repo root
-- [ ] T003 [P] Create `analyze_replays.py` as an empty CLI stub with argparse skeleton (`--dir`, `--opponent`, `--buckets`) at repo root
+- [x] T001 Create `replays/` directory and add it to `.gitignore` (large JSON files, dev-only)
+- [x] T002 [P] Create `record_replays.py` as an empty CLI stub with argparse skeleton (`--opponent`, `--games`, `--out-dir`, `--our-agent`) at repo root
+- [x] T003 [P] Create `analyze_replays.py` as an empty CLI stub with argparse skeleton (`--dir`, `--opponent`, `--buckets`) at repo root
 
 ---
 
@@ -29,11 +29,11 @@
 
 **⚠️ CRITICAL**: All user story work depends on this phase being complete.
 
-- [ ] T004 Implement `_make_recording_shim(agent_fn, player_idx, move_log)` in `record_replays.py` — wraps an agent callable, appends `(turn, player_idx, moves)` to `move_log` each call, returns the same moves unchanged
-- [ ] T005 Implement `_compute_planet_counts(planets_raw, n_players)` and `_compute_ship_totals(planets_raw, fleets_raw, n_players)` helper functions in `record_replays.py` — derive per-player planet count and total ship count from raw obs fields
-- [ ] T006 Implement `_compute_divergence_turn(turns)` in `record_replays.py` — scans TurnRecord list and returns the first turn index where `max(counts[i]/counts[j]) >= 2.0` for planets or ships; returns `None` if never reached
-- [ ] T007 Implement `_serialize_replay(agents, opponent_file, outcome, turn_records)` in `record_replays.py` — builds and returns the full Replay dict matching the v1.0 schema in `contracts/replay-schema.md`; includes `version`, `recorded_at`, `agents`, `opponent_file`, `outcome`, `turns`
-- [ ] T008 Implement `_save_replay(replay_dict, out_dir, opponent_slug, game_idx)` in `record_replays.py` — writes JSON to `{out_dir}/replay_{opponent_slug}_{YYYYMMDD_HHMMSS}_{game_idx:03d}.json`; creates `out_dir` if absent
+- [x] T004 Implement `_make_recording_shim(agent_fn, player_idx, move_log)` in `record_replays.py` — wraps an agent callable, appends `(turn, player_idx, moves)` to `move_log` each call, returns the same moves unchanged
+- [x] T005 Implement `_compute_planet_counts(planets_raw, n_players)` and `_compute_ship_totals(planets_raw, fleets_raw, n_players)` helper functions in `record_replays.py` — derive per-player planet count and total ship count from raw obs fields
+- [x] T006 Implement `_compute_divergence_turn(turns)` in `record_replays.py` — scans TurnRecord list and returns the first turn index where `max(counts[i]/counts[j]) >= 2.0` for planets or ships; returns `None` if never reached
+- [x] T007 Implement `_serialize_replay(agents, opponent_file, outcome, turn_records)` in `record_replays.py` — builds and returns the full Replay dict matching the v1.0 schema in `contracts/replay-schema.md`; includes `version`, `recorded_at`, `agents`, `opponent_file`, `outcome`, `turns`
+- [x] T008 Implement `_save_replay(replay_dict, out_dir, opponent_slug, game_idx)` in `record_replays.py` — writes JSON to `{out_dir}/replay_{opponent_slug}_{YYYYMMDD_HHMMSS}_{game_idx:03d}.json`; creates `out_dir` if absent
 
 **Checkpoint**: Shim, serializer, and save helpers are ready — game recording can now be implemented in US1.
 
@@ -47,13 +47,13 @@
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement the main game-recording loop in `record_replays.py` — loads our agent and opponent via `importlib` (with `sys.modules` registration fix), wraps both in `_make_recording_shim`, calls `env.run([shim_a, shim_b])`, collects raw obs from each step's state
-- [ ] T010 [US1] Extract `TurnRecord` from each env step in the recording loop — build `planets` list (id, x, y, radius, owner, ships, production), `fleets` list (id, owner, ships, source, destination, eta), `moves` from shim log, `planet_counts`, `ship_totals`
-- [ ] T011 [US1] Compute `Outcome` after each game ends — winner (player with higher reward, or `null` for draw), `end_turn`, `final_planets`, `final_ships`, `divergence_turn` (via T006), `total_dispatches`
-- [ ] T012 [US1] Wire the recording loop to `_serialize_replay` and `_save_replay` — each completed game is written to disk before the next game starts; print filename on save
-- [ ] T013 [US1] Add side-alternation to the recording loop in `record_replays.py` — even games: our agent is player 0; odd games: opponent is player 0 (same pattern as `eval_opponents.py`)
-- [ ] T014 [US1] Implement `_load_replays(directory, opponent_slug=None)` in `analyze_replays.py` — globs JSON files, filters by opponent slug in filename if provided, returns list of parsed replay dicts; prints count of files loaded
-- [ ] T015 [US1] Implement turn-by-turn display in `analyze_replays.py` — given a single replay, print a compact table: turn | our_planets | opp_planets | our_ships | opp_ships | our_dispatches | opp_dispatches; add `--replay <file>` flag to trigger this mode
+- [x] T009 [US1] Implement the main game-recording loop in `record_replays.py` — loads our agent and opponent via `importlib` (with `sys.modules` registration fix), wraps both in `_make_recording_shim`, calls `env.run([shim_a, shim_b])`, collects raw obs from each step's state
+- [x] T010 [US1] Extract `TurnRecord` from each env step in the recording loop — build `planets` list (id, x, y, radius, owner, ships, production), `fleets` list (id, owner, ships, source, destination, eta), `moves` from shim log, `planet_counts`, `ship_totals`
+- [x] T011 [US1] Compute `Outcome` after each game ends — winner (player with higher reward, or `null` for draw), `end_turn`, `final_planets`, `final_ships`, `divergence_turn` (via T006), `total_dispatches`
+- [x] T012 [US1] Wire the recording loop to `_serialize_replay` and `_save_replay` — each completed game is written to disk before the next game starts; print filename on save
+- [x] T013 [US1] Add side-alternation to the recording loop in `record_replays.py` — even games: our agent is player 0; odd games: opponent is player 0 (same pattern as `eval_opponents.py`)
+- [x] T014 [US1] Implement `_load_replays(directory, opponent_slug=None)` in `analyze_replays.py` — globs JSON files, filters by opponent slug in filename if provided, returns list of parsed replay dicts; prints count of files loaded
+- [x] T015 [US1] Implement turn-by-turn display in `analyze_replays.py` — given a single replay, print a compact table: turn | our_planets | opp_planets | our_ships | opp_ships | our_dispatches | opp_dispatches; add `--replay <file>` flag to trigger this mode
 
 **Checkpoint**: `record_replays.py` records games; `analyze_replays.py --replay <file>` displays turn-by-turn state. User Story 1 is independently testable.
 
@@ -67,11 +67,11 @@
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Implement `_bucket_index(turn, buckets)` and `_aggregate_stats(replays, buckets)` in `analyze_replays.py` — computes per-bucket averages for planet counts, ship totals, and dispatches per turn for each player across all replays
-- [ ] T017 [US2] Implement `_divergence_stats(replays)` in `analyze_replays.py` — collects divergence turns from losses, returns min/median/max and count; handles games with no divergence recorded
-- [ ] T018 [US2] Implement `_print_summary(stats, divergence_stats, replays)` in `analyze_replays.py` — prints the full summary table: win rate, per-bucket table (our agent / opponent), divergence distribution, per-game outcome list (matching the format in `contracts/replay-schema.md`)
-- [ ] T019 [US2] Wire `_aggregate_stats`, `_divergence_stats`, and `_print_summary` into the default `analyze_replays.py` main path (no `--replay` flag) with `--buckets` parsing (comma-separated integers → list of ints)
-- [ ] T020 [US2] Add `--opponent` filter to `analyze_replays.py` main path — passes slug to `_load_replays`; prints "No replays found" and exits 0 if filter yields nothing
+- [x] T016 [US2] Implement `_bucket_index(turn, buckets)` and `_aggregate_stats(replays, buckets)` in `analyze_replays.py` — computes per-bucket averages for planet counts, ship totals, and dispatches per turn for each player across all replays
+- [x] T017 [US2] Implement `_divergence_stats(replays)` in `analyze_replays.py` — collects divergence turns from losses, returns min/median/max and count; handles games with no divergence recorded
+- [x] T018 [US2] Implement `_print_summary(stats, divergence_stats, replays)` in `analyze_replays.py` — prints the full summary table: win rate, per-bucket table (our agent / opponent), divergence distribution, per-game outcome list (matching the format in `contracts/replay-schema.md`)
+- [x] T019 [US2] Wire `_aggregate_stats`, `_divergence_stats`, and `_print_summary` into the default `analyze_replays.py` main path (no `--replay` flag) with `--buckets` parsing (comma-separated integers → list of ints)
+- [x] T020 [US2] Add `--opponent` filter to `analyze_replays.py` main path — passes slug to `_load_replays`; prints "No replays found" and exits 0 if filter yields nothing
 
 **Checkpoint**: `analyze_replays.py` prints a complete batch summary. User Story 2 is independently testable.
 
@@ -81,12 +81,12 @@
 
 **Purpose**: Completeness, error handling, and the Claude skill integration.
 
-- [ ] T021 Add error handling to `record_replays.py` — catch agent exceptions mid-game, save partial replay up to the error turn with a note in `outcome` (`"error": "<message>"`), continue to next game
-- [ ] T022 [P] Add `--our-agent` dynamic loading to `record_replays.py` — use same `importlib` + `sys.modules` pattern as `eval_opponents.py`; default to `agent_v56.py`; print agent names at start
-- [ ] T023 [P] Create `experiments/` directory if it does not exist and add a `.gitkeep`; update `.gitignore` to keep the directory but not its contents if desired
-- [ ] T024 Validate the `/analyze-replay` skill end-to-end — run `record_replays.py --games 5`, then invoke `/analyze-replay` inside a Claude Code session; confirm it loads files, prints the summary table, identifies ≥3 behavioral differences, and writes to `experiments/`
-- [ ] T025 [P] Update `opponent_agents/README.md` — add note pointing to `record_replays.py` and `/analyze-replay` skill for replay-based analysis
-- [ ] T026 [P] Run `quickstart.md` validation end-to-end — execute each command in the quickstart, confirm all produce expected output
+- [x] T021 Add error handling to `record_replays.py` — catch agent exceptions mid-game, save partial replay up to the error turn with a note in `outcome` (`"error": "<message>"`), continue to next game
+- [x] T022 [P] Add `--our-agent` dynamic loading to `record_replays.py` — use same `importlib` + `sys.modules` pattern as `eval_opponents.py`; default to `agent_v56.py`; print agent names at start
+- [x] T023 [P] Create `experiments/` directory if it does not exist and add a `.gitkeep`; update `.gitignore` to keep the directory but not its contents if desired
+- [x] T024 Validate the `/analyze-replay` skill end-to-end — run `record_replays.py --games 5`, then invoke `/analyze-replay` inside a Claude Code session; confirm it loads files, prints the summary table, identifies ≥3 behavioral differences, and writes to `experiments/`
+- [x] T025 [P] Update `opponent_agents/README.md` — add note pointing to `record_replays.py` and `/analyze-replay` skill for replay-based analysis
+- [x] T026 [P] Run `quickstart.md` validation end-to-end — execute each command in the quickstart, confirm all produce expected output
 
 ---
 

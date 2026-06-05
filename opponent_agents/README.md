@@ -19,3 +19,20 @@ Downloaded from Kaggle Orbit Wars competition discussions/notebooks.
 # From repo root — test agent_v56 vs each opponent (20 games each)
 python eval_opponents.py
 ```
+
+## Replay-based analysis
+
+```bash
+# Record games and save full per-turn replays to replays/
+python record_replays.py --opponent opponent_agents/slawekbiel_agent.py --games 20
+
+# Browse a single replay turn-by-turn
+python analyze_replays.py --replay replays/<file>.json
+
+# Batch statistics across all recorded games
+python analyze_replays.py
+
+# Analyze with Claude — surfaces behavioral patterns and proposes improvements
+# (run inside a Claude Code session)
+/analyze-replay
+```
