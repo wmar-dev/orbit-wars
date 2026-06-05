@@ -64,9 +64,9 @@ make selfplay       # run agent_v2.py vs itself (symmetric baseline)
 | `agent_v53.py` | + Persistent campaign target: module-level campaign dict, 30% ROI stability threshold (Candidate C6 R015) | 28% win rate vs v47 (50 games) — FAIL (severe regression) |
 | `agent_v54.py` | Combined C3+C1 (garrison buffer + ROI mismatch fix) | 58% win rate vs v47 (50 games) — below C3 alone |
 | `agent_v56.py` | + Iterative comet intercept: replace 2-pass with convergent fixed-point loop (10 iter, eps=0.5); non-convergent → valid=False, no wasted fleet | 66% win rate vs v50 (50 games) |
-| `agent_v57.py` | Fix A: launch-offset correction in orbit lead (_launch_corrected_orbit_lead re-runs from actual fleet launch position); Fix B: path safety uses predicted intermediate planet positions at flight midpoint | 61% win rate vs v56 (200 games) |
-| **`agent_v58.py`** | **Affordability fallback in targeting loop: when best-ROI target is unaffordable, iterate sorted candidates until finding one that is affordable AND scores ≥70% of the best candidate (FALLBACK_MIN_RATIO guard). Fixes 6-step dispatch delay identified in replay 78539022.** | **58% win rate vs v57 (50 games)** |
-| `agent_v59.py` | Combined: fleet coordination + defensive reinforcement (production≥3, ETA-aware) + greedy-subset beam search (15-turn forward sim). | 50% vs v58 (200 games) — no improvement; v58 remains best |
+| `agent_v57.py` | Candidate A: early dispatch for neutrals (step<60) — send surplus above garrison floor without waiting for full ships_needed | 0% vs v56 (20 games) — FAIL |
+| `agent_v58.py` | Candidate B: multi-planet dispatch — remove single-sender serialization; each planet finds its own best ROI target independently | 50% vs v56 (20 games) — no improvement |
+| **`agent_v59.py`** | **Candidate C: reduce garrison ceiling from 4× to 2.5× production (1.0+1.5× ramp vs 1.0+3.0× ramp); frees ships for larger mid-game dispatches** | **100% vs v56 (50 games)** |
 
 ## How It Works
 

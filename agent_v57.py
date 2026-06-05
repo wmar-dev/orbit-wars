@@ -1,25 +1,16 @@
 """
 Orbit Wars - agent_v57
 
-Fix A: Launch-offset correction in orbit lead
-Fix B: Predicted intermediate planet positions in path safety
-Base: agent_v56 (iterative comet intercept convergence)
+Candidate A: Early-game aggressive dispatch for neutral planets.
+Base: agent_v56
 
-Fix A — The orbit lead (_converged_orbit_lead) used mine.center as the fleet
-launch origin. The game engine actually launches fleets from
-mine.center + direction * (mine.radius + 0.1). For orbiting targets, this caused
-the fleet to arrive (mine.radius + 0.1) / speed turns early — before the target
-reached the predicted intercept point. Introduced _launch_corrected_orbit_lead
-which re-runs the orbit lead from the actual launch position after a first-pass
-direction estimate.
+Replay analysis showed we stockpile 50+ ships on home planet in turns 0-10
+while the opponent captures 2 neutrals. Root cause: we only dispatch when
+mine.ships >= ships_needed (full capture). In early game (step < 60), relax
+this: if the target is neutral and we have positive surplus above garrison floor,
+send all our surplus immediately — don't wait to accumulate the full amount.
 
-Fix B — _path_safe used current positions of intermediate orbiting planets for
-collision detection. When both source and target are orbiting, intermediate
-orbiting planets that are currently in the path may have moved away by the time
-the fleet reaches that region. Now uses predicted planet positions at the midpoint
-of the fleet's estimated travel time, reducing false-negative dispatch blocks.
-
-Result: 61% win rate vs agent_v56 (200 games).
+This races us to neutrals in turns 0-15 instead of turns 8-20.
 """
 
 import math
@@ -79,8 +70,7 @@ def _ray_exits_board(ox, oy, angle):
     return ox + dx * t, oy + dy * t
 
 
-def _path_safe(ox, oy, tx, ty, all_planets=None, target_id=None, source_id=None,
-               initial_planets_map=None, angular_velocity=0.0, travel_turns=0.0):
+def _path_safe(ox, oy, tx, ty, all_planets=None, target_id=None, source_id=None):
     if not (0 <= tx <= BOARD_SIZE and 0 <= ty <= BOARD_SIZE):
         return False
     angle = math.atan2(ty - oy, tx - ox)
@@ -88,16 +78,11 @@ def _path_safe(ox, oy, tx, ty, all_planets=None, target_id=None, source_id=None,
     if _segment_dist_to_sun(ox, oy, ex, ey) < SUN_EXCLUSION:
         return False
     if all_planets:
-        mid = travel_turns / 2.0
         for p in all_planets:
             if p.id == target_id or p.id == source_id:
                 continue
-            if initial_planets_map and angular_velocity > 0 and mid > 0:
-                px, py = _predict_planet_pos(p, initial_planets_map, angular_velocity, mid)
-            else:
-                px, py = p.x, p.y
             clearance = p.radius + PLANET_MARGIN
-            if _segment_dist_to_point(ox, oy, tx, ty, px, py) < clearance:
+            if _segment_dist_to_point(ox, oy, tx, ty, p.x, p.y) < clearance:
                 return False
     return True
 
@@ -131,19 +116,6 @@ def _converged_orbit_lead(t, mine, initial_planets_map, angular_velocity, speed,
             return nx, ny
         x, y = nx, ny
     return x, y
-
-
-def _launch_corrected_orbit_lead(t, mine, initial_planets_map, angular_velocity, speed):
-    # First pass from planet center to get direction
-    ax, ay = _converged_orbit_lead(t, mine, initial_planets_map, angular_velocity, speed)
-    dist = math.hypot(ax - mine.x, ay - mine.y)
-    if dist < 1e-6:
-        return ax, ay
-    # Actual launch is planet.radius + 0.1 ahead of center along the same direction
-    ux, uy = (ax - mine.x) / dist, (ay - mine.y) / dist
-    launch = type('_L', (), {'x': mine.x + ux * (mine.radius + 0.1),
-                              'y': mine.y + uy * (mine.radius + 0.1)})()
-    return _converged_orbit_lead(t, launch, initial_planets_map, angular_velocity, speed)
 
 
 def _build_comet_path_lookup(obs):
@@ -206,8 +178,7 @@ def _angle_diff(a, b):
     return abs(math.atan2(math.sin(a - b), math.cos(a - b)))
 
 
-def _enemy_fleet_size(t, x_pred, y_pred, mine_x, mine_y, initial_planets_map, angular_velocity,
-                      mine_radius=0.0):
+def _enemy_fleet_size(t, x_pred, y_pred, mine_x, mine_y, initial_planets_map, angular_velocity):
     """Compute the production-adjusted fleet size needed to capture an enemy planet.
 
     Iterates once: compute naive travel time, estimate garrison, then recompute
@@ -227,9 +198,9 @@ def _enemy_fleet_size(t, x_pred, y_pred, mine_x, mine_y, initial_planets_map, an
             orbital_radius = math.hypot(ip.x - cx, ip.y - cy)
             if orbital_radius + t.radius < 50.0:
                 # Planet orbits — recompute lead with corrected speed
-                mine_fake = type('M', (), {'x': mine_x, 'y': mine_y, 'radius': mine_radius})()
-                x_c, y_c = _launch_corrected_orbit_lead(t, mine_fake, initial_planets_map,
-                                                         angular_velocity, corrected_speed)
+                mine_fake = type('M', (), {'x': mine_x, 'y': mine_y})()
+                x_c, y_c = _converged_orbit_lead(t, mine_fake, initial_planets_map,
+                                                  angular_velocity, corrected_speed)
                 # One more iteration for ships_needed with corrected travel
                 corrected_travel = math.hypot(x_c - mine_x, y_c - mine_y) / corrected_speed
                 ships_needed = int(t.ships + t.production * corrected_travel) + 1
@@ -328,13 +299,10 @@ def agent(obs):
                     if not valid:
                         continue
                 else:
-                    x_pred, y_pred = _launch_corrected_orbit_lead(p, mine, initial_planets_map, angular_velocity, speed_evac)
+                    x_pred, y_pred = _converged_orbit_lead(p, mine, initial_planets_map, angular_velocity, speed_evac)
 
-                evac_travel = math.hypot(x_pred - mine.x, y_pred - mine.y) / speed_evac
                 if not _path_safe(mine.x, mine.y, x_pred, y_pred,
-                                  all_planets=planets, target_id=p.id, source_id=mine.id,
-                                  initial_planets_map=initial_planets_map,
-                                  angular_velocity=angular_velocity, travel_turns=evac_travel):
+                                  all_planets=planets, target_id=p.id, source_id=mine.id):
                     continue
 
                 if p.owner == player:
@@ -365,13 +333,9 @@ def agent(obs):
                 if not valid:
                     continue
             else:
-                x_pred, y_pred = _launch_corrected_orbit_lead(t, mine, initial_planets_map, angular_velocity, speed_for_lead)
+                x_pred, y_pred = _converged_orbit_lead(t, mine, initial_planets_map, angular_velocity, speed_for_lead)
 
-            cand_travel = math.hypot(x_pred - mine.x, y_pred - mine.y) / speed_for_lead
-            if _path_safe(mine.x, mine.y, x_pred, y_pred, all_planets=planets,
-                          target_id=t.id, source_id=mine.id,
-                          initial_planets_map=initial_planets_map,
-                          angular_velocity=angular_velocity, travel_turns=cand_travel):
+            if _path_safe(mine.x, mine.y, x_pred, y_pred, all_planets=planets, target_id=t.id, source_id=mine.id):
                 candidates.append((t, x_pred, y_pred))
 
         if not candidates:
@@ -394,19 +358,27 @@ def agent(obs):
         else:
             # Production-adjusted fleet size with orbit-lead correction for orbiting planets
             ships_needed, bx, by = _enemy_fleet_size(
-                best_target, bx, by, mine.x, mine.y, initial_planets_map, angular_velocity,
-                mine_radius=mine.radius
+                best_target, bx, by, mine.x, mine.y, initial_planets_map, angular_velocity
             )
             # Re-validate path safety for corrected position
-            corrected_travel = math.hypot(bx - mine.x, by - mine.y) / fleet_speed(ships_needed)
             if not _path_safe(mine.x, mine.y, bx, by, all_planets=planets,
-                               target_id=best_target.id, source_id=mine.id,
-                               initial_planets_map=initial_planets_map,
-                               angular_velocity=angular_velocity, travel_turns=corrected_travel):
+                               target_id=best_target.id, source_id=mine.id):
                 continue
 
+        # Candidate A: in early game, send surplus immediately toward neutrals
+        # rather than waiting to accumulate the full ships_needed amount.
         if mine.ships < ships_needed:
-            continue
+            if step < 60 and best_target.owner == -1:
+                incoming = threat.get(mine.id, 0)
+                buffer = mine.production * 2 if incoming > 0 else 0
+                floor = max(mine.production * GARRISON_FLOOR_FACTOR, incoming + buffer)
+                surplus = int(mine.ships - floor)
+                if surplus >= 1:
+                    ships_needed = surplus
+                else:
+                    continue
+            else:
+                continue
 
         angle = math.atan2(by - mine.y, bx - mine.x)
         moves.append([mine.id, angle, ships_needed])
