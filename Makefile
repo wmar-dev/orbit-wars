@@ -13,15 +13,17 @@ UV           := uv
 RL_OPPONENT ?= agent_v38.py
 RL_EPISODES ?= 1000
 
-.PHONY: venv install test eval selfplay submit status episodes replay logs leaderboard render4 render2 help train-ppo train-dqn train-a2c
+.PHONY: venv install test eval selfplay opponents eval4p submit status episodes replay logs leaderboard render4 render2 help train-ppo train-dqn train-a2c
 
 help:
 	@echo "Usage:"
 	@echo "  make venv                             Create virtual environment with uv"
 	@echo "  make install                          Install kaggle-environments and kaggle CLI"
 	@echo "  make test                             Run agent vs random locally"
-	@echo "  make eval                             Run agent_v2.py vs main.py (10 games)"
-	@echo "  make selfplay                         Run agent_v2.py vs itself (10 games)"
+	@echo "  make eval                             Run $(AGENT) vs main.py (10 games)"
+	@echo "  make selfplay                         Run $(AGENT) vs itself (10 games)"
+	@echo "  make opponents                        Sweep $(AGENT) vs all known opponents"
+	@echo "  make eval4p                           4-player eval: $(AGENT) vs random"
 	@echo "  make submit MESSAGE=\"v2 description\"  Submit agent to Kaggle"
 	@echo "  make status                           Show recent submissions"
 	@echo "  make episodes SUBMISSION_ID=<id>      List episodes for a submission"
@@ -47,10 +49,16 @@ final = env.steps[-1]; \
 "
 
 eval:
-	$(UV) run python eval.py --agent0 agent_v2.py --agent1 main.py --games 10
+	$(UV) run python eval.py h2h --agent0 $(AGENT) --agent1 main.py --games 10 --swap
 
 selfplay:
-	$(UV) run python eval.py --agent0 agent_v2.py --agent1 agent_v2.py --games 10
+	$(UV) run python eval.py h2h --agent0 $(AGENT) --agent1 $(AGENT) --games 10
+
+opponents:
+	$(UV) run python eval.py opponents --agent $(AGENT) --games 20
+
+eval4p:
+	$(UV) run python eval.py 4p --agent $(AGENT) --games 20
 
 SUBMISSION_ARCHIVE := $(basename $(AGENT)).tar.gz
 

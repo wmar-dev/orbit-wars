@@ -1,33 +1,63 @@
 """
-Orbit Wars - Head-to-Head Evaluation Harness
+Orbit Wars - Unified Evaluation Harness
 
-Runs N games between two agent files and prints per-game results
-and an aggregate win rate to stdout.
+Subcommands:
+  h2h        Head-to-head 2-player evaluation
+  4p         4-player evaluation (agent vs 3 opponents)
+  opponents  Sweep against known opponent agents
 
 Usage:
-    uv run python eval.py [--games N] [--agent0 PATH] [--agent1 PATH] [--verbose] [--jobs N]
-    uv run python eval.py ... [--reward-log PATH]  # write per-turn rewards to .jsonl
+  uv run python eval.py h2h [--agent0 PATH] [--agent1 PATH] [--games N] [--jobs N] [--swap] [--verbose] [--reward-log PATH]
+  uv run python eval.py 4p  [--agent PATH] [--opponent PATH|random] [--games N] [--jobs N] [--reward-log PATH]
+  uv run python eval.py opponents [--agent PATH] [--opponent SLUG] [--games N]
 """
 
 import argparse
-import importlib.util
 import json
 import math
 import multiprocessing
+import sys
+import importlib.util
 
 from kaggle_environments import make
 from kaggle_environments.envs.orbit_wars.orbit_wars import Planet
 
 
+KNOWN_OPPONENTS = [
+    ("sigmaborov",      "opponent_agents/sigmaborov_agent.py"),
+    ("dylanxue04",      "opponent_agents/dylanxue04_agent.py"),
+    ("yusufmurtaza",    "opponent_agents/yusufmurtaza_agent.py"),
+    ("slawekbiel",      "opponent_agents/slawekbiel_agent.py"),
+    ("adilshamim8",     "opponent_agents/adilshamim8_agent.py"),
+    ("melccoro",        "opponent_agents/melccoro_agent.py"),
+    ("rahulchauhan016", "opponent_agents/rahulchauhan016_agent.py"),
+]
+
+
 def load_agent(path):
-    spec = importlib.util.spec_from_file_location("agent_module", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.agent
+    if path in ("random", "do_nothing"):
+        return path
+    module_name = path.replace("/", "_").replace(".", "_")
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = mod  # Python 3.14: needed for dataclass __module__ resolution
+    spec.loader.exec_module(mod)
+    return mod.agent
 
 
-def make_verbose_wrapper(inner_agent, label, move_log):
-    """Wraps an agent to log its moves each turn for --verbose output."""
+def _make_obs_collector(inner_agent, obs_list):
+    def wrapped(obs):
+        obs_list.append(obs if isinstance(obs, dict) else {
+            "planets": obs.planets,
+            "fleets": obs.fleets,
+            "player": obs.player,
+            "step": obs.step,
+        })
+        return inner_agent(obs)
+    return wrapped
+
+
+def _make_verbose_wrapper(inner_agent, label, move_log):
     turn = [0]
 
     def wrapped(obs):
@@ -42,7 +72,6 @@ def make_verbose_wrapper(inner_agent, label, move_log):
             source = planets.get(from_id)
             if source is None:
                 continue
-            # Find the planet this fleet is heading toward (closest in that direction).
             best_target = None
             best_align = -1.0
             for pid, p in planets.items():
@@ -53,12 +82,10 @@ def make_verbose_wrapper(inner_agent, label, move_log):
                 dist = math.hypot(dx, dy)
                 if dist < 0.1:
                     continue
-                # Dot product with unit fleet vector gives alignment score.
                 align = (dx * math.cos(angle) + dy * math.sin(angle)) / dist
                 if align > best_align:
                     best_align = align
                     best_target = p
-
             if best_target is not None:
                 prod_score = best_target.production / (
                     math.hypot(best_target.x - source.x, best_target.y - source.y) + 1e-6
@@ -75,43 +102,37 @@ def make_verbose_wrapper(inner_agent, label, move_log):
     return wrapped
 
 
-def _make_obs_collector(inner_agent, obs_list):
-    """Wraps an agent to append each observation to obs_list for reward computation."""
-    def wrapped(obs):
-        obs_list.append(obs if isinstance(obs, dict) else {
-            "planets": obs.planets,
-            "fleets": obs.fleets,
-            "player": obs.player,
-            "step": obs.step,
-        })
-        return inner_agent(obs)
-    return wrapped
+# ── h2h ──────────────────────────────────────────────────────────────────────
 
-
-def _run_game(args):
-    """Run a single game in a worker process. Must be module-level for pickling."""
-    agent0_path, agent1_path, seed, verbose, collect_rewards = args
+def _run_h2h_game(args):
+    agent0_path, agent1_path, seed, swap, verbose, collect_rewards = args
     agent0_fn = load_agent(agent0_path)
     agent1_fn = load_agent(agent1_path)
-    move_log = []
 
+    should_swap = swap and (seed % 2 == 1)
+    p0_fn = agent1_fn if should_swap else agent0_fn
+    p1_fn = agent0_fn if should_swap else agent1_fn
+
+    move_log = []
     obs_lists = [[], []]
+
     if collect_rewards:
-        agent0_fn = _make_obs_collector(agent0_fn, obs_lists[0])
-        agent1_fn = _make_obs_collector(agent1_fn, obs_lists[1])
+        p0_fn = _make_obs_collector(p0_fn, obs_lists[0])
+        p1_fn = _make_obs_collector(p1_fn, obs_lists[1])
 
     if verbose:
-        a0 = make_verbose_wrapper(agent0_fn, "P0", move_log)
-        a1 = make_verbose_wrapper(agent1_fn, "P1", move_log)
-    else:
-        a0, a1 = agent0_fn, agent1_fn
+        p0_fn = _make_verbose_wrapper(p0_fn, "P0", move_log)
+        p1_fn = _make_verbose_wrapper(p1_fn, "P1", move_log)
 
     env = make("orbit_wars", configuration={"seed": seed}, debug=False)
-    env.run([a0, a1])
+    env.run([p0_fn, p1_fn])
 
     final = env.steps[-1]
     r0 = final[0].get("reward") or 0.0
     r1 = final[1].get("reward") or 0.0
+
+    r_agent0 = r1 if should_swap else r0
+    r_agent1 = r0 if should_swap else r1
 
     reward_records = []
     if collect_rewards:
@@ -136,28 +157,27 @@ def _run_game(args):
                 rw["player"] = player
                 reward_records.append(rw)
 
-    return seed, r0, r1, move_log, reward_records
+    return seed, r_agent0, r_agent1, move_log, reward_records
 
 
-def run_evaluation(agent0_path, agent1_path, num_games, verbose, jobs, reward_log_path=None):
+def cmd_h2h(args):
     wins = [0, 0]
     draws = 0
-    collect_rewards = reward_log_path is not None
     game_args = [
-        (agent0_path, agent1_path, s, verbose, collect_rewards)
-        for s in range(num_games)
+        (args.agent0, args.agent1, s, args.swap, args.verbose, args.reward_log is not None)
+        for s in range(args.games)
     ]
 
     pool = None
-    if jobs > 1:
-        pool = multiprocessing.Pool(processes=min(jobs, num_games))
-        results = pool.imap_unordered(_run_game, game_args)
+    if args.jobs > 1:
+        pool = multiprocessing.Pool(processes=min(args.jobs, args.games))
+        results = pool.imap_unordered(_run_h2h_game, game_args)
     else:
-        results = (_run_game(a) for a in game_args)
+        results = (_run_h2h_game(a) for a in game_args)
 
     pending = {}
     next_to_print = 0
-    reward_file = open(reward_log_path, "w") if reward_log_path else None
+    reward_file = open(args.reward_log, "w") if args.reward_log else None
 
     try:
         for seed, r0, r1, move_log, reward_records in results:
@@ -167,18 +187,17 @@ def run_evaluation(agent0_path, agent1_path, num_games, verbose, jobs, reward_lo
                 game_num = next_to_print + 1
                 if r0 > r1:
                     wins[0] += 1
-                    result = "Player 0 wins"
+                    outcome = "A0 wins"
                 elif r1 > r0:
                     wins[1] += 1
-                    result = "Player 1 wins"
+                    outcome = "A1 wins"
                 else:
                     draws += 1
-                    result = "Draw"
-                print(f"Game {game_num} (seed={next_to_print}): {result}  [P0: {r0}  P1: {r1}]")
-                if verbose and move_log:
-                    p0_moves = [m for m in move_log if "[P0]" in m][:5]
-                    p1_moves = [m for m in move_log if "[P1]" in m][:5]
-                    for line in p0_moves + p1_moves:
+                    outcome = "Draw"
+                swap_tag = " [swapped]" if args.swap and next_to_print % 2 == 1 else ""
+                print(f"Game {game_num} (seed={next_to_print}){swap_tag}: {outcome}  [A0: {r0}  A1: {r1}]")
+                if args.verbose and move_log:
+                    for line in move_log[:10]:
                         print(line)
                 if reward_file and reward_records:
                     for rec in reward_records:
@@ -193,33 +212,210 @@ def run_evaluation(agent0_path, agent1_path, num_games, verbose, jobs, reward_lo
         pool.close()
         pool.join()
 
-    print()
-    print(f"--- Results ({num_games} games) ---")
-    print(f"Agent 0 ({agent0_path}): {wins[0]} wins")
-    print(f"Agent 1 ({agent1_path}): {wins[1]} wins")
-    print(f"Draws:                 {draws}")
-    win_rate = wins[0] / num_games * 100
-    score = (wins[0] + 0.5 * draws) / num_games * 100
-    print(f"Win rate (agent 0):    {win_rate:.1f}%  (draws count as losses)")
-    print(f"Score    (agent 0):    {score:.1f}%  (draws count as 0.5)")
-    if reward_log_path:
-        print(f"Reward log written to: {reward_log_path}")
+    n = args.games
+    win_rate = wins[0] / n * 100
+    score = (wins[0] + 0.5 * draws) / n * 100
+    tag = "WIN" if score >= 60 else ("FAIL" if score <= 40 else "EVEN")
+    side_note = "side-alternating" if args.swap else "fixed sides"
 
+    print()
+    print(f"--- Results ({n} games, {side_note}) ---")
+    print(f"Agent0 ({args.agent0}): {wins[0]} wins")
+    print(f"Agent1 ({args.agent1}): {wins[1]} wins")
+    print(f"Draws:                 {draws}")
+    print(f"Win rate (agent0):     {win_rate:.1f}%  (draws = loss)")
+    print(f"Score    (agent0):     {score:.1f}%  (draws = 0.5)  [{tag}]")
+    if args.reward_log:
+        print(f"Reward log:            {args.reward_log}")
+
+
+# ── 4p ───────────────────────────────────────────────────────────────────────
+
+def _run_4p_game(args):
+    agent_path, opponent_path, seed, collect_rewards = args
+    agent_fn = load_agent(agent_path)
+    opp_fn = load_agent(opponent_path)
+
+    obs_lists = [[], [], [], []]
+    if collect_rewards:
+        players = [agent_fn, opp_fn, opp_fn, opp_fn]
+        wrapped_players = [_make_obs_collector(players[i], obs_lists[i]) for i in range(4)]
+    else:
+        wrapped_players = [agent_fn, opp_fn, opp_fn, opp_fn]
+
+    env = make("orbit_wars", configuration={"seed": seed}, debug=False)
+    env.run(wrapped_players)
+
+    final = env.steps[-1]
+    rewards = [s.get("reward") or 0.0 for s in final]
+    agent_reward = rewards[0]
+    rank = 1 + sum(1 for r in rewards[1:] if r > agent_reward)
+
+    reward_records = []
+    if collect_rewards:
+        import reward_signal
+        num_turns = max(len(obs_lists[p]) for p in range(4))
+        for turn in range(num_turns):
+            for player in range(4):
+                hist = obs_lists[player]
+                if turn >= len(hist):
+                    continue
+                prev_obs = hist[turn - 1] if turn > 0 else None
+                curr_obs = hist[turn]
+                is_terminal = turn == len(hist) - 1
+                rw = reward_signal.compute_reward(
+                    prev_obs, curr_obs, player,
+                    final_rewards=rewards if is_terminal else None,
+                    num_players=4,
+                )
+                rw["game_id"] = seed
+                rw["seed"] = seed
+                rw["step"] = turn
+                rw["player"] = player
+                reward_records.append(rw)
+
+    return seed, rank, agent_reward, reward_records
+
+
+def cmd_4p(args):
+    ranks = []
+    wins = 0
+    game_args = [
+        (args.agent, args.opponent, s, args.reward_log is not None)
+        for s in range(args.games)
+    ]
+
+    pool = None
+    if args.jobs > 1:
+        pool = multiprocessing.Pool(processes=min(args.jobs, args.games))
+        results = pool.imap_unordered(_run_4p_game, game_args)
+    else:
+        results = (_run_4p_game(a) for a in game_args)
+
+    pending = {}
+    next_to_print = 0
+    reward_file = open(args.reward_log, "w") if args.reward_log else None
+
+    try:
+        for seed, rank, reward, reward_records in results:
+            pending[seed] = (rank, reward, reward_records)
+            while next_to_print in pending:
+                rank, reward, reward_records = pending.pop(next_to_print)
+                game_num = next_to_print + 1
+                ranks.append(rank)
+                if rank == 1:
+                    wins += 1
+                print(f"Game {game_num} (seed={next_to_print}): rank={rank}  [reward={reward}]")
+                if reward_file and reward_records:
+                    for rec in reward_records:
+                        reward_file.write(json.dumps(rec) + "\n")
+                    reward_file.flush()
+                next_to_print += 1
+    finally:
+        if reward_file:
+            reward_file.close()
+
+    if pool is not None:
+        pool.close()
+        pool.join()
+
+    n = args.games
+    avg_rank = sum(ranks) / len(ranks) if ranks else 0.0
+    win_rate = wins / n * 100
+
+    print()
+    print(f"--- Results ({n} games, 4-player) ---")
+    print(f"Agent ({args.agent}) vs 3x {args.opponent}")
+    print(f"Wins (rank 1):  {wins}")
+    print(f"Win rate:       {win_rate:.1f}%")
+    print(f"Average rank:   {avg_rank:.2f}  (1=best, 4=worst; random baseline ~2.5)")
+    if args.reward_log:
+        print(f"Reward log:     {args.reward_log}")
+
+
+# ── opponents ─────────────────────────────────────────────────────────────────
+
+def _play_vs_opponent(our_agent_fn, opp_fn, n_games):
+    wins = draws = losses = 0
+    for i in range(n_games):
+        env = make("orbit_wars", configuration={"seed": i}, debug=False)
+        if i % 2 == 1:
+            result = env.run([opp_fn, our_agent_fn])
+            our_idx = 1
+        else:
+            result = env.run([our_agent_fn, opp_fn])
+            our_idx = 0
+        final = result[-1]
+        rewards = [s["reward"] for s in final]
+        our_r = rewards[our_idx]
+        opp_r = rewards[1 - our_idx]
+        if our_r > opp_r:
+            wins += 1
+        elif our_r == opp_r:
+            draws += 1
+        else:
+            losses += 1
+    return wins, draws, losses
+
+
+def cmd_opponents(args):
+    our_agent_fn = load_agent(args.agent)
+    opponents = KNOWN_OPPONENTS
+    if args.opponent:
+        opponents = [(n, p) for n, p in KNOWN_OPPONENTS if n == args.opponent]
+        if not opponents:
+            known = [n for n, _ in KNOWN_OPPONENTS]
+            print(f"Unknown opponent '{args.opponent}'. Known: {known}")
+            sys.exit(1)
+
+    print(f"Agent: {args.agent}  ({args.games} games each, side-alternating)")
+    print()
+    print(f"{'Opponent':<20} {'W':>4} {'D':>4} {'L':>4}  {'Win%':>6}  {'Tag'}")
+    print("-" * 52)
+    for name, path in opponents:
+        try:
+            opp = load_agent(path)
+            w, d, l = _play_vs_opponent(our_agent_fn, opp, args.games)
+            total = w + d + l
+            pct = 100 * w / total if total else 0
+            tag = "WIN" if pct >= 60 else ("FAIL" if pct <= 40 else "EVEN")
+            print(f"{name:<20} {w:>4} {d:>4} {l:>4}  {pct:>5.1f}%   {tag}")
+        except Exception as e:
+            print(f"{name:<20} ERROR: {e}")
+
+
+# ── main ─────────────────────────────────────────────────────────────────────
 
 def main():
-    parser = argparse.ArgumentParser(description="Orbit Wars head-to-head evaluator")
-    parser.add_argument("--games", type=int, default=10, help="Number of games to play")
-    parser.add_argument("--agent0", default="agent_v2.py", help="Path to agent under test")
-    parser.add_argument("--agent1", default="main.py", help="Path to baseline agent")
-    parser.add_argument("--verbose", action="store_true", help="Print per-turn move details")
-    parser.add_argument("--jobs", type=int, default=1, help="Parallel worker processes (default: 1)")
-    parser.add_argument(
-        "--reward-log", metavar="PATH", default=None,
-        help="Write per-turn, per-player rewards to a .jsonl file (one JSON object per line)",
+    parser = argparse.ArgumentParser(
+        description="Orbit Wars - Unified Evaluation Harness",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    args = parser.parse_args()
+    sub = parser.add_subparsers(dest="cmd", required=True)
 
-    run_evaluation(args.agent0, args.agent1, args.games, args.verbose, args.jobs, args.reward_log)
+    p_h2h = sub.add_parser("h2h", help="Head-to-head 2-player evaluation")
+    p_h2h.add_argument("--agent0", default="agent_v59.py")
+    p_h2h.add_argument("--agent1", default="main.py")
+    p_h2h.add_argument("--games", type=int, default=10)
+    p_h2h.add_argument("--jobs", type=int, default=1, help="Parallel worker processes")
+    p_h2h.add_argument("--swap", action="store_true", help="Alternate sides on odd games (removes positional bias)")
+    p_h2h.add_argument("--verbose", action="store_true", help="Print per-turn move details")
+    p_h2h.add_argument("--reward-log", metavar="PATH", default=None, help="Write per-turn rewards to .jsonl")
+
+    p_4p = sub.add_parser("4p", help="4-player evaluation (agent vs 3 opponents)")
+    p_4p.add_argument("--agent", default="agent_v59.py")
+    p_4p.add_argument("--opponent", default="random", help="Opponent path or 'random' (slots 1-3)")
+    p_4p.add_argument("--games", type=int, default=20)
+    p_4p.add_argument("--jobs", type=int, default=1, help="Parallel worker processes")
+    p_4p.add_argument("--reward-log", metavar="PATH", default=None, help="Write per-turn rewards to .jsonl")
+
+    p_opp = sub.add_parser("opponents", help="Sweep against known opponent agents")
+    p_opp.add_argument("--agent", default="agent_v59.py")
+    p_opp.add_argument("--opponent", default=None, metavar="SLUG", help="Run only this opponent slug")
+    p_opp.add_argument("--games", type=int, default=20)
+
+    args = parser.parse_args()
+    {"h2h": cmd_h2h, "4p": cmd_4p, "opponents": cmd_opponents}[args.cmd](args)
 
 
 if __name__ == "__main__":
