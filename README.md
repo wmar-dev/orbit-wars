@@ -65,8 +65,8 @@ make selfplay       # run agent vs itself (symmetric baseline)
 | `agent_v54.py` | Combined C3+C1 (garrison buffer + ROI mismatch fix) | 58% win rate vs v47 (50 games) — below C3 alone |
 | `agent_v56.py` | + Iterative comet intercept: replace 2-pass with convergent fixed-point loop (10 iter, eps=0.5); non-convergent → valid=False, no wasted fleet | 66% win rate vs v50 (50 games) |
 | `agent_v57.py` | Candidate A: early dispatch for neutrals (step<60) — send surplus above garrison floor without waiting for full ships_needed | 0% vs v56 (20 games) — FAIL |
-| `agent_v58.py` | Candidate B: multi-planet dispatch — remove single-sender serialization; each planet finds its own best ROI target independently | 50% vs v56 (20 games) — no improvement |
-| **`agent_v59.py`** | **Candidate C: reduce garrison ceiling from 4× to 2.5× production (1.0+1.5× ramp vs 1.0+3.0× ramp); frees ships for larger mid-game dispatches** | **100% vs v56 (50 games)** |
+| **`agent_v58.py`** | **Candidate B: multi-planet dispatch — remove single-sender serialization; each planet finds its own best ROI target independently** | **50% vs v56 (20 games)** |
+| `agent_v59.py` | Candidate C: reduce garrison ceiling from 4× to 2.5× production (1.0+1.5× ramp vs 1.0+3.0× ramp); frees ships for larger mid-game dispatches | 100% vs v56 (50 games) — REGRESSION on Kaggle (791.8 vs 842.0) |
 
 ## How It Works
 
