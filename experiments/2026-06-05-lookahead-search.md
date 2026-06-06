@@ -82,4 +82,4 @@ OPPONENT_MODEL    = False
 
 **Final 50-game eval vs v58**: 54% (27/50, beam, depth=10, TRANSIT_WEIGHT=0.1, OPPONENT_MODEL=False)
 
-**Kaggle submission score**: TBD
+**Kaggle submission score**: 916.9 (ref 53404085, 2026-06-05) — new personal best (prev best: 851.0 with v58)
