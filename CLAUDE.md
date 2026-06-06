@@ -5,6 +5,6 @@ After creating a new agent file or recording eval results, always update the Age
 <!-- SPECKIT START -->
 ## Current Feature
 
-Active implementation plan: [specs/021-lookahead-search/plan.md](specs/021-lookahead-search/plan.md)
+Active implementation plan: [specs/022-agent-tactical-improvements/plan.md](specs/022-agent-tactical-improvements/plan.md)
 
 <!-- SPECKIT END -->
