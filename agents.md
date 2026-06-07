@@ -240,14 +240,12 @@ kaggle competitions leaderboard orbit-wars -s
 ```
 
 <!-- SPECKIT START -->
-Active feature: `024-experiments-round-4`
-Plan: `specs/024-experiments-round-4/plan.md`
-Spec: `specs/024-experiments-round-4/spec.md`
+Active feature: `025-experiments-round-5`
+Plan: `specs/025-experiments-round-5/plan.md`
+Spec: `specs/025-experiments-round-5/spec.md`
 
-Three experiments on agent_v63 to close the 0% slawekbiel gap:
-1. **P1** Improved opponent model (v3) — DISCARDED (34% vs v63)
-2. **P2** Multi-turn plan generation — KEPT (54% vs v63)
-3. **P3** Phase-detection dispatch — DISCARDED (48% vs v63)
-
-Combined: 54% vs v63, 100% vs 3/4 local opponents, 0% vs slawekbiel (no improvement).
+Three experiments on agent_v64 to close the slawekbiel gap and improve 4-player FFA:
+1. **P1** Multi-source coordinated attack — beam search candidates with 2 sources on same target
+2. **P2** Fleet-size-optimized dispatch — iterative convergence + oversend for distant targets
+3. **P3** 4-player state adaptation — adjust aggressiveness by opponent count
 <!-- SPECKIT END -->
