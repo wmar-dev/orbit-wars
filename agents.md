@@ -240,15 +240,9 @@ kaggle competitions leaderboard orbit-wars -s
 ```
 
 <!-- SPECKIT START -->
-Active feature: `025-experiments-round-5`
-Plan: `specs/025-experiments-round-5/plan.md`
-Spec: `specs/025-experiments-round-5/spec.md`
+Active feature: `026-rl-training`
+Plan: `specs/026-rl-training/plan.md`
+Spec: `specs/026-rl-training/spec.md`
 
-Four experiments on agent_v64 to close the slawekbiel gap:
-1. **P1** Multi-source coordinated attack — DISCARDED (12% vs v64)
-2. **P2** Fleet-size-optimized dispatch — DISCARDED (10% vs v64)
-3. **P3** 4-player state adaptation — DISCARDED (48% vs v64)
-4. **P4** Endgame elimination focus — DISCARDED (0% vs v64)
-
-Combined: all discarded. v65 set to v64 baseline (all toggles false). v64 remains current best at 54% vs v63.
+RL training pipeline using PPO (MLX/Apple Silicon GPU). Train policy network against progressively stronger opponents — random → agent_v64 → self-play. Three user stories: pipeline setup verification, training vs strong opponents, evaluation harness.
 <!-- SPECKIT END -->
