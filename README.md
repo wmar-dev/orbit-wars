@@ -68,7 +68,8 @@ make selfplay       # run agent vs itself (symmetric baseline)
 | `agent_v58.py` | Candidate B: multi-planet dispatch — remove single-sender serialization; each planet finds its own best ROI target independently | Kaggle: 851.0 |
 | `agent_v59.py` | Candidate C: reduce garrison ceiling from 4× to 2.5× production (1.0+1.5× ramp vs 1.0+3.0× ramp); frees ships for larger mid-game dispatches | 100% vs v56 (50 games) — REGRESSION on Kaggle (779.3 vs 851.0) |
 | `agent_v60.py` | Lookahead beam search: evaluate top-K alternative targets per mine N turns forward before committing; SEARCH_STRATEGY=beam, SEARCH_DEPTH=10, BEAM_K=3 | 54% vs v58 (50 games); Kaggle: 916.9 |
-| **`agent_v61.py`** | **+ Dynamic garrison floor: cap gff at 2.5× (vs 4×) over 400 turns (vs 300); frees ships for mid/late dispatch without over-exposing planets** | **56% vs v60 (50 games)** |
+| `agent_v61.py` | + Dynamic garrison floor: cap gff at 2.5× (vs 4×) over 400 turns (vs 300); frees ships for mid/late dispatch without over-exposing planets | 56% vs v60 (50 games) |
+| **`agent_v62.py`** | **best4: splinter dispatch + enhanced eval + fixed opponent model + dynamic garrison; 70% vs v61, 100% vs 3/4 local opponents** | **70% vs v61 (50 games)** |
 
 ## How It Works
 
