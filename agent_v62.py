@@ -44,6 +44,7 @@ EVAL_ENHANCED_ENABLED      = True   # PASS: 65% vs v60
 OPPONENT_MODEL_V2_ENABLED  = True   # PASS: 80% vs v60 (after double-dispatch fix)
 
 DYNAMIC_GARRISON_ENABLED  = True    # PASS: 67.5% vs v60 (from v61)
+DEFENSE_INTERCEPT_ENABLED  = True   # NEW: intercept incoming fleets before they land
 
 # ---------------------------------------------------------------------------
 # Tunable sub-parameters
@@ -51,6 +52,10 @@ DYNAMIC_GARRISON_ENABLED  = True    # PASS: 67.5% vs v60 (from v61)
 
 SPLINTER_WINDOW            = 30     # last step where splinter dispatch applies
 SPLINTER_SURPLUS_FRACTION  = 1.0    # send all surplus, or fraction thereof
+
+# Exp 6: interceptor defense
+INTERCEPT_MIN_THREAT_RATIO = 1.2   # only intercept if fleet.ships > garrison * this
+INTERCEPT_MIN_PROD         = 3.0   # only defend planets with production >= this
 
 # Eval weights for Experiment 4
 PLANET_COUNT_WEIGHT        = 0.5    # weight per planet owned above opponent
@@ -342,6 +347,13 @@ def _angle_diff(a, b):
     return abs(math.atan2(math.sin(a - b), math.cos(a - b)))
 
 
+def _get_planet_prod(pid, planets):
+    for p in planets:
+        if p.id == pid:
+            return p.production
+    return 0.0
+
+
 def _enemy_fleet_size(t, x_pred, y_pred, mine_x, mine_y, initial_planets_map, angular_velocity):
     naive_speed = fleet_speed(t.ships + 1)
     naive_travel = math.hypot(x_pred - mine_x, y_pred - mine_y) / naive_speed
@@ -409,10 +421,92 @@ def _greedy_moves(obs, planets, my_planets, targets, initial_planets_map,
     # Track in-flight coverage per target (Exp 1: MULTI_DISPATCH)
     target_coverage = {}  # target_id -> total ships committed this turn
 
+    # ------------------------------------------------------------------
+    # Exp 6: Interceptor defense pre-pass
+    # ------------------------------------------------------------------
+    intercepted_planets = set()   # our planets already reinforced this turn
+    intercept_senders = set()     # allied planets already used for intercept
+
+    if DEFENSE_INTERCEPT_ENABLED:
+        # Build per-fleet threat details: target planet, ships, eta
+        fleet_threats = []  # (target_planet, fleet_ships, fleet_eta)
+        for f in raw_fleets:
+            if isinstance(f, (list, tuple)):
+                f_owner, f_x, f_y, f_angle, f_ships = f[1], float(f[2]), float(f[3]), float(f[4]), int(f[6])
+            else:
+                f_owner, f_x, f_y, f_angle, f_ships = f.owner, f.x, f.y, f.angle, f.ships
+            if f_owner == player:
+                continue
+            for p in my_planets:
+                expected = math.atan2(p.y - f_y, p.x - f_x)
+                if _angle_diff(f_angle, expected) < ANGLE_EPSILON:
+                    dist = math.hypot(f_x - p.x, f_y - p.y)
+                    eta = max(1, int(dist / fleet_speed(f_ships)) + 1)
+                    fleet_threats.append((p, f_ships, eta))
+
+        # Sort by threat severity (largest fleet first), then by target production
+        fleet_threats.sort(key=lambda x: -x[1] * _get_planet_prod(x[0], planets))
+
+        for target_planet, fleet_ships, fleet_eta in fleet_threats:
+            if target_planet.id in intercepted_planets:
+                continue
+            if target_planet.id in departing_this_turn:
+                continue
+            if target_planet.production < INTERCEPT_MIN_PROD:
+                continue
+
+            # Estimate garrison at arrival: current ships + production during transit
+            garrison_at_arrival = target_planet.ships + target_planet.production * fleet_eta
+            if fleet_ships <= garrison_at_arrival * INTERCEPT_MIN_THREAT_RATIO:
+                continue
+
+            # We will lose this planet — find nearest ally that can reinforce in time
+            needed = int(fleet_ships - garrison_at_arrival) + 1
+
+            best_source = None
+            best_eta = float('inf')
+            for src in my_planets:
+                if src.id == target_planet.id:
+                    continue
+                if src.id in departing_this_turn:
+                    continue
+                if src.id in evacuate_this_turn:
+                    continue
+                if src.id in intercept_senders:
+                    continue
+                speed = fleet_speed(needed)
+                dist = math.hypot(src.x - target_planet.x, src.y - target_planet.y)
+                src_eta = max(1, int(dist / speed))
+                if src_eta >= fleet_eta:
+                    continue  # too late — arrives after enemy fleet
+                # Check path safety
+                if _path_safe(src.x, src.y, target_planet.x, target_planet.y,
+                              all_planets=planets, target_id=target_planet.id, source_id=src.id):
+                    if src_eta < best_eta:
+                        best_eta = src_eta
+                        best_source = src
+
+            if best_source is None:
+                continue
+
+            # Check source can afford to send needed ships
+            src_incoming = threat.get(best_source.id, 0)
+            src_floor = max(best_source.production * gff, src_incoming)
+            if best_source.ships - src_floor < needed:
+                continue
+
+            # Dispatch intercept
+            angle = math.atan2(target_planet.y - best_source.y, target_planet.x - best_source.x)
+            moves.append([best_source.id, angle, needed])
+            intercepted_planets.add(target_planet.id)
+            intercept_senders.add(best_source.id)
+
     claimed_targets = set()
 
     for mine in my_planets:
         if mine.id in departing_this_turn:
+            continue
+        if mine.id in intercept_senders:
             continue
 
         if mine.id in evacuate_this_turn:

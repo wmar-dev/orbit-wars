@@ -238,3 +238,8 @@ kaggle competitions logs <EPISODE_ID> 0
 # Check leaderboard
 kaggle competitions leaderboard orbit-wars -s
 ```
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
