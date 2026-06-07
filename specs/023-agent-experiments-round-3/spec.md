@@ -8,15 +8,22 @@
 
 **Input**: User description: "Do another round of experiments"
 
+## Clarifications
+
+### Session 2026-06-06
+
+- Q: What baseline should experiments be tested against — v60 (old) or v62 (current best)? → A: All experiments evaluated against v62 as the baseline control, not v60. SC-001/003 and FR-001/007 updated accordingly.
+- Q: Should this round create a new agent file (agent_v63.py) or add toggles to v62? → A: Create `agent_v63.py` from v62 + all new experiments. v62 remains frozen as the baseline control. FR-002 updated.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 — Evaluate Defense Interceptor (Priority: P1)
 
-The agent detects incoming enemy fleets that will overpower their target planet's garrison before arrival, then preemptively dispatches a reinforcing fleet from the nearest allied planet to intercept. This experiment is already implemented in `agent_v62.py` (`DEFENSE_INTERCEPT_ENABLED = True`) but has not been independently evaluated.
+The agent detects incoming enemy fleets that will overpower their target planet's garrison before arrival, then preemptively dispatches a reinforcing fleet from the nearest allied planet to intercept. This experiment is already implemented and togglable in the v62 codebase (`DEFENSE_INTERCEPT_ENABLED = True`) but has not been independently evaluated.
 
-**Why this priority**: The interceptor is the only unevaluated experiment in v62. Its theory is sound (prevent preventable losses) and it's already implemented — the evaluation cost is zero development time.
+**Why this priority**: The interceptor is the only unevaluated experiment inherited from v62. Its theory is sound (prevent preventable losses) and it requires zero development time to evaluate.
 
-**Independent Test**: Run a 50-game head-to-head eval with `DEFENSE_INTERCEPT_ENABLED=True` and all other v62 experimental toggles at their current state vs v62 with `DEFENSE_INTERCEPT_ENABLED=False`. Measure win rate and planet survivability (average garrison lost to enemy capture per game).
+**Independent Test**: Copy v62 to `agent_v63.py`. Run a 50-game head-to-head eval: v63 with `DEFENSE_INTERCEPT_ENABLED=True` vs v63 with `DEFENSE_INTERCEPT_ENABLED=False` (all other toggles identical). Measure win rate and average garrison lost to enemy capture per game.
 
 **Acceptance Scenarios**:
 
@@ -33,7 +40,7 @@ The agent increases beam search depth from 10 to 15+ or beam width from 3 to 5+ 
 
 **Why this priority**: The slawekbiel opponent exposes the current agent as tactically outclassed. Deeper search allows the agent to see further into the game tree and avoid short-term greedy traps. This is the most likely path to closing the slawekbiel gap.
 
-**Independent Test**: Run 50-game evals of v62 vs v60 at depth=15 and depth=20 and beam width=5, comparing win rate to the baseline (depth=10, K=3). If depth=15 improves win rate vs slawekbiel (using a recorded replay), proceed to full eval. Monitor per-turn timing to ensure 800ms budget compliance.
+**Independent Test**: In `agent_v63.py`, run 50-game evals comparing depth=15/20 and beam width=5 vs baseline v62 (depth=10, K=3). If depth=15 improves win rate vs slawekbiel, proceed to full eval. Monitor per-turn timing to ensure 800ms budget compliance.
 
 **Acceptance Scenarios**:
 
@@ -50,7 +57,7 @@ The beam search evaluation function accumulates production score over the simula
 
 **Why this priority**: The concept is sound (capture timing matters) and the v61 failure was a specific implementation bug, not a fundamental flaw. Fixing the weight accumulation approach may provide the anticipated 3-5pp improvement.
 
-**Independent Test**: Run a 50-game eval vs v60 with the corrected weighted eval and all other v62 experiments disabled. Target: ≥54% win rate (was 40% with the buggy version). If it passes, add to the combined best4 configuration for a full combined test.
+**Independent Test**: In `agent_v63.py`, run a 50-game eval with `WEIGHTED_EVAL_FIXED_ENABLED=True` vs baseline v62 (which has no weighted eval). Target: ≥52% win rate. If it passes, add to the combined configuration for a full combined test.
 
 **Acceptance Scenarios**:
 
@@ -72,13 +79,13 @@ The beam search evaluation function accumulates production score over the simula
 
 ### Functional Requirements
 
-- **FR-001**: The DEFENSE_INTERCEPT_ENABLED experiment MUST be independently evaluated for win rate impact vs v60 before being included or discarded in any combined configuration.
+- **FR-001**: The DEFENSE_INTERCEPT_ENABLED experiment MUST be independently evaluated for win rate impact vs v62 (with DEFENSE_INTERCEPT toggled off) before being included or discarded in any combined configuration.
 - **FR-002**: The search depth and beam width MUST be independently tunable via constants (`SEARCH_DEPTH`, `BEAM_K`) to allow systematic A/B testing.
 - **FR-003**: Timing instrumentation MUST be added to report per-turn p50/p95/p99 timing when running eval, to verify 800ms budget compliance.
 - **FR-004**: The corrected weighted eval MUST accumulate only production differential (`own_prod - opp_prod`) over intermediate steps, with transit weight applied only at the horizon (final step).
 - **FR-005**: The corrected weighted eval MUST be independently togglable via a constant (`WEIGHTED_EVAL_FIXED_ENABLED`).
 - **FR-006**: The slawekbiel opponent MUST be included in the opponent sweep for any configuration considered for submission.
-- **FR-007**: Each experiment MUST be run against v60 (50 games, --swap) as the baseline control, with results recorded in the experiment log.
+- **FR-007**: All experiments MUST be evaluated against v62 (current best agent) as the baseline control, not v60. This ensures measured improvements are additive to the best known configuration. Each eval uses 50 games with --swap.
 
 ### Key Entities
 
@@ -91,15 +98,17 @@ The beam search evaluation function accumulates production score over the simula
 
 ### Measurable Outcomes
 
-- **SC-001**: Defense interceptor evaluation yields win rate vs v60 (with best4 toggles) — if ≥52%, keep; if <50%, discard.
+- **SC-001**: Defense interceptor evaluation yields win rate vs v62 (with DEFENSE_INTERCEPT toggled off as control) — if ≥52%, keep; if <50%, discard.
 - **SC-002**: Deep search (depth≥15) completes within 800ms p99 on local hardware and improves win rate vs slawekbiel from 0% to ≥20%.
-- **SC-003**: Corrected weighted eval achieves ≥54% vs v60 standalone (vs 40% for the buggy version).
-- **SC-004**: Combined configuration (best4 + any passing experiments) achieves ≥72% vs v60 (improvement from current 72%).
+- **SC-003**: Corrected weighted eval achieves ≥54% vs v62 standalone (vs 40% for the buggy version).
+- **SC-004**: Combined configuration (v62 + any passing experiments) improves win rate vs v62 over the current best4 baseline.
 - **SC-005**: All experiment results are logged in `experiments/2026-06-06-experiments-round3.md` with win rates, sample counts, and conclusions.
 - **SC-006**: Kaggle submission score after this round exceeds the current best (916.9).
 
 ## Assumptions
 
+- All experiments are evaluated against v62 (the current best agent) as the baseline control, not v60. This ensures measured improvements are additive to the best known configuration.
+- `agent_v63.py` is created as a copy of v62 serving as the experimental platform. v62 remains frozen as the baseline for all comparisons.
 - The slawekbiel opponent's advantage comes from deeper search or better tactical reasoning, not from a fundamentally different architecture (e.g., neural net).
 - The 800ms per-turn budget on Kaggle is similar to local timing; deeper depth will be tested with timing instrumentation before submission.
 - The v62 best4 configuration (SPLINTER, EVAL_ENHANCED, OPPONENT_MODEL_V2, DYNAMIC_GARRISON) remains the baseline for combined tests, with new experiments added as toggles on top.

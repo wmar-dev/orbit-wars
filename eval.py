@@ -16,7 +16,9 @@ import argparse
 import json
 import math
 import multiprocessing
+import statistics
 import sys
+import time
 import importlib.util
 
 from kaggle_environments import make
@@ -102,10 +104,20 @@ def _make_verbose_wrapper(inner_agent, label, move_log):
     return wrapped
 
 
+def _make_timing_wrapper(inner_agent, timings):
+    def wrapped(obs):
+        t0 = time.perf_counter()
+        moves = inner_agent(obs)
+        elapsed = (time.perf_counter() - t0) * 1000
+        timings.append(elapsed)
+        return moves
+    return wrapped
+
+
 # ── h2h ──────────────────────────────────────────────────────────────────────
 
 def _run_h2h_game(args):
-    agent0_path, agent1_path, seed, swap, verbose, collect_rewards = args
+    agent0_path, agent1_path, seed, swap, verbose, collect_rewards, collect_timing = args
     agent0_fn = load_agent(agent0_path)
     agent1_fn = load_agent(agent1_path)
 
@@ -115,6 +127,12 @@ def _run_h2h_game(args):
 
     move_log = []
     obs_lists = [[], []]
+    timings_p0 = []
+    timings_p1 = []
+
+    if collect_timing:
+        p0_fn = _make_timing_wrapper(p0_fn, timings_p0)
+        p1_fn = _make_timing_wrapper(p1_fn, timings_p1)
 
     if collect_rewards:
         p0_fn = _make_obs_collector(p0_fn, obs_lists[0])
@@ -157,14 +175,15 @@ def _run_h2h_game(args):
                 rw["player"] = player
                 reward_records.append(rw)
 
-    return seed, r_agent0, r_agent1, move_log, reward_records
+    return seed, r_agent0, r_agent1, move_log, reward_records, timings_p0, timings_p1
 
 
 def cmd_h2h(args):
     wins = [0, 0]
     draws = 0
+    all_timings = []
     game_args = [
-        (args.agent0, args.agent1, s, args.swap, args.verbose, args.reward_log is not None)
+        (args.agent0, args.agent1, s, args.swap, args.verbose, args.reward_log is not None, args.timing)
         for s in range(args.games)
     ]
 
@@ -180,10 +199,10 @@ def cmd_h2h(args):
     reward_file = open(args.reward_log, "w") if args.reward_log else None
 
     try:
-        for seed, r0, r1, move_log, reward_records in results:
-            pending[seed] = (r0, r1, move_log, reward_records)
+        for seed, r0, r1, move_log, reward_records, t0_list, t1_list in results:
+            pending[seed] = (r0, r1, move_log, reward_records, t0_list, t1_list)
             while next_to_print in pending:
-                r0, r1, move_log, reward_records = pending.pop(next_to_print)
+                r0, r1, move_log, reward_records, t0_list, t1_list = pending.pop(next_to_print)
                 game_num = next_to_print + 1
                 if r0 > r1:
                     wins[0] += 1
@@ -204,6 +223,9 @@ def cmd_h2h(args):
                         reward_file.write(json.dumps(rec) + "\n")
                     reward_file.flush()
                 next_to_print += 1
+                if args.timing:
+                    all_timings.extend(t0_list)
+                    all_timings.extend(t1_list)
     finally:
         if reward_file:
             reward_file.close()
@@ -211,6 +233,14 @@ def cmd_h2h(args):
     if pool is not None:
         pool.close()
         pool.join()
+
+    if args.timing and all_timings:
+        all_timings.sort()
+        n_t = len(all_timings)
+        p50 = all_timings[n_t // 2]
+        p95 = all_timings[int(n_t * 0.95)]
+        p99 = all_timings[int(n_t * 0.99)]
+        print(f"Timing (ms)   p50={p50:.1f}  p95={p95:.1f}  p99={p99:.1f}  (samples={n_t})")
 
     n = args.games
     win_rate = wins[0] / n * 100
@@ -401,6 +431,7 @@ def main():
     p_h2h.add_argument("--swap", action="store_true", help="Alternate sides on odd games (removes positional bias)")
     p_h2h.add_argument("--verbose", action="store_true", help="Print per-turn move details")
     p_h2h.add_argument("--reward-log", metavar="PATH", default=None, help="Write per-turn rewards to .jsonl")
+    p_h2h.add_argument("--timing", action="store_true", help="Report per-turn timing p50/p95/p99")
 
     p_4p = sub.add_parser("4p", help="4-player evaluation (agent vs 3 opponents)")
     p_4p.add_argument("--agent", default="agent_v59.py")
