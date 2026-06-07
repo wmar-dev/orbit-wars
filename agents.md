@@ -245,9 +245,9 @@ Plan: `specs/024-experiments-round-4/plan.md`
 Spec: `specs/024-experiments-round-4/spec.md`
 
 Three experiments on agent_v63 to close the 0% slawekbiel gap:
-1. **P1** Improved opponent model (v3) — production-weighted simulation
-2. **P2** Multi-turn plan generation — skip candidates in beam search
-3. **P3** Phase-detection dispatch — adjust params by game state
+1. **P1** Improved opponent model (v3) — DISCARDED (34% vs v63)
+2. **P2** Multi-turn plan generation — KEPT (54% vs v63)
+3. **P3** Phase-detection dispatch — DISCARDED (48% vs v63)
 
-Evals use 50 games with --swap vs v63 baseline.
+Combined: 54% vs v63, 100% vs 3/4 local opponents, 0% vs slawekbiel (no improvement).
 <!-- SPECKIT END -->

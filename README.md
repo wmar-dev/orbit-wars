@@ -71,6 +71,7 @@ make selfplay       # run agent vs itself (symmetric baseline)
 | `agent_v61.py` | + Dynamic garrison floor: cap gff at 2.5× (vs 4×) over 400 turns (vs 300); frees ships for mid/late dispatch without over-exposing planets | 56% vs v60 (50 games) |
 | **`agent_v62.py`** | **best4: splinter dispatch + enhanced eval + fixed opponent model + dynamic garrison; 70% vs v61, 100% vs 3/4 local opponents** | **70% vs v61 (50 games)** |
 | **`agent_v63.py`** | **experiments round 3: corrected weighted beam eval (+12pp over buggy v61 attempt); 52% vs v62, 100% vs 3/4 local opponents** | **52% vs v62 (50 games)** |
+| **`agent_v64.py`** | **experiments round 4: multi-turn plan skip candidates in beam search (54% vs v63); opponent model v3 discarded (34%); phase detection discarded (48%)** | **54% vs v63 (50 games)** |
 
 ## How It Works
 
