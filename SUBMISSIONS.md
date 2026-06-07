@@ -1,12 +1,13 @@
 # Kaggle Submissions
 
-Last updated: 2026-06-05
+Last updated: 2026-06-06
 
 ## My Submissions
 
 | ref | file | date | description | score |
 | --- | ---- | ---- | ----------- | ----- |
-| 53404085 | agent_v60.tar.gz | 2026-06-05 22:26 | agent_v60: lookahead beam search, depth=10, BEAM_K=3, 54% vs v58 | **916.9** |
+| 53404085 | agent_v60.tar.gz | 2026-06-05 22:26 | agent_v60: lookahead beam search, depth=10, BEAM_K=3, 54% vs v58 | 860.3 |
+| 53404079 | agent_v58.tar.gz | 2026-06-05 22:26 | agent_v58 re-submitted same day as v60 (was 851.0) | **880.7** |
 | 53383127 | agent_v59.tar.gz | 2026-06-05 06:15 | agent_v59: reduce garrison ceiling 4x->2.5x, 60% vs v56 | 779.3 |
 | 53308134 | agent_v58.tar.gz | 2026-06-03 00:53 | agent_v58: affordability fallback fix, 58% vs v57 | 851.0 |
 | 53290784 | agent_v57.tar.gz | 2026-06-02 12:48 | agent_v57: fix orbit lead launch offset + path safety for both-orbiting scenarios (61% vs v56) | 837.5 |
@@ -24,27 +25,27 @@ Last updated: 2026-06-05
 
 ## Leaderboard (Top 20)
 
-As of 2026-06-04
+As of 2026-06-06
 
 | rank | team | last submission | score |
 | ---- | ---- | --------------- | ----- |
-| 1 | Jake Will | 2026-06-01 | 1714.8 |
-| 2 | TonyK | 2026-06-04 | 1690.6 |
-| 3 | 213tubo | 2026-06-03 | 1641.0 |
-| 4 | typeIIIfairy | 2026-05-29 | 1603.7 |
-| 5 | 3Comets | 2026-05-31 | 1579.6 |
-| 6 | Zachary Ruhe | 2026-05-30 | 1571.3 |
-| 7 | Controlvector | 2026-06-04 | 1559.4 |
-| 8 | Vadasz | 2026-06-04 | 1554.0 |
-| 9 | dragon warrior | 2026-06-04 | 1552.3 |
-| 10 | Felix M Neumann | 2026-06-04 | 1541.7 |
-| 11 | Audun Ljone Henriksen | 2026-05-31 | 1540.6 |
-| 12 | bowwowforeach | 2026-05-28 | 1537.6 |
-| 13 | flg | 2026-06-04 | 1531.5 |
-| 14 | Hober Malloc | 2026-06-03 | 1530.8 |
-| 15 | vkhydras | 2026-06-04 | 1519.8 |
-| 16 | C404 | 2026-06-05 | 1472.4 |
-| 17 | One Man Wrecking Machine | 2026-06-02 | 1465.9 |
-| 18 | saharan | 2026-05-28 | 1462.8 |
-| 19 | Ebi | 2026-06-04 | 1461.1 |
-| 20 | Ascalon | 2026-05-30 | 1458.1 |
+| 1 | Isaiah @ Tufa Labs | 2026-06-05 | 1749.4 |
+| 2 | Jake Will | 2026-06-01 | 1639.8 |
+| 3 | TonyK | 2026-06-04 | 1630.9 |
+| 4 | Boey | 2026-06-07 | 1619.1 |
+| 5 | typeIIIfairy | 2026-05-29 | 1614.2 |
+| 6 | 213tubo | 2026-06-03 | 1606.7 |
+| 7 | vkhydras | 2026-06-06 | 1583.2 |
+| 8 | Zachary Ruhe | 2026-05-30 | 1548.5 |
+| 9 | dragon warrior | 2026-06-06 | 1546.3 |
+| 10 | Vadasz | 2026-06-04 | 1543.3 |
+| 11 | 3Comets | 2026-05-31 | 1538.0 |
+| 12 | flg | 2026-06-05 | 1532.5 |
+| 13 | Controlvector | 2026-06-07 | 1531.8 |
+| 14 | Audun Ljone Henriksen | 2026-05-31 | 1530.8 |
+| 15 | bowwowforeach | 2026-05-28 | 1528.2 |
+| 16 | Hober Malloc | 2026-06-05 | 1525.1 |
+| 17 | Felix M Neumann | 2026-06-04 | 1517.7 |
+| 18 | skalermo | 2026-06-07 | 1482.6 |
+| 19 | Shun_PI | 2026-06-06 | 1472.0 |
+| 20 | Piotr Gabrys | 2026-06-06 | 1462.9 |
