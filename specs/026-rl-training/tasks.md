@@ -14,11 +14,11 @@ description: "Task list for RL training pipeline"
 
 **Purpose**: Ensure the existing RL infrastructure (ppo.py, env.py, obs.py, export.py) works end-to-end with no crashes, produces checkpoints, and supports resume.
 
-- [ ] T001 Run 10-episode PPO training vs random, confirm checkpoint + resume
-- [ ] T002 Export checkpoint to single-file agent via export.py with --verify
-- [ ] T003 Fix decode_action docstring in rl/obs.py:199 (stale no-op reference)
-- [ ] T004 Save .pt checkpoints during training (not just at end) in rl/ppo.py
-- [ ] T005 Add `--log-file` and `--log-frequency` arguments for configurable logging
+- [X] T001 Run 10-episode PPO training vs random, confirm checkpoint + resume
+- [X] T002 Export checkpoint to single-file agent via export.py with --verify
+- [X] T003 Fix decode_action docstring in rl/obs.py:199 (stale no-op reference)
+- [X] T004 Save .pt checkpoints during training (not just at end) in rl/ppo.py
+- [X] T005 Add `--log-file` and `--log-frequency` arguments for configurable logging
 
 ---
 
@@ -26,9 +26,9 @@ description: "Task list for RL training pipeline"
 
 **Purpose**: Switch opponent progression to target agent_v64 and train a policy that demonstrably improves. Measure reward trend over training.
 
-- [ ] T006 [P] Update `get_opponent` in rl/ppo.py to use agent_v64 as strong opponent (replace agent_v38)
-- [ ] T007 Train 1000 episodes vs agent_v64 to confirm reward trend is upward
-- [ ] T008 Verify exported policy plays valid legal moves (no crashes, no 0-command turns unless forced)
+- [X] T006 [P] Update `get_opponent` in rl/ppo.py to use agent_v64 as strong opponent (replace agent_v38)
+- [X] T007 Train 1000 episodes vs agent_v64 to confirm reward trend is upward
+- [X] T008 Verify exported policy plays valid legal moves (no crashes, no 0-command turns unless forced)
 
 ---
 
@@ -38,8 +38,8 @@ description: "Task list for RL training pipeline"
 
 **Independent Test**: `make eval AGENT1=/tmp/rl_agent.py AGENT2=agent_v64.py GAMES=20` reports win rate and avg reward.
 
-- [ ] T009 [US1] Create evaluation script or Makefile target `eval-rl` that exports checkpoint to agent file then runs eval.py h2h against v64
-- [ ] T010 [US1] Verify timing: p99 per-turn < 100ms for exported numpy forward pass
+- [X] T009 [US1] Create evaluation script or Makefile target `eval-rl` that exports checkpoint to agent file then runs eval.py h2h against v64
+- [X] T010 [US1] Verify timing: p99 per-turn < 100ms for exported numpy forward pass
 
 ---
 
@@ -50,14 +50,17 @@ description: "Task list for RL training pipeline"
 **Independent Test**: After 5000 episodes, `make eval-rl` shows ≥20% win rate vs v64.
 
 - [ ] T011 [US2] Train 5000 episodes vs agent_v64 + self-play; evaluate every 500 episodes
+  ⚠️ TRAINING COMPLETE (4800 v64-only episodes) but win rate remains 0%. No improvement detected. See experiments/2026-06-07-rl-round6-results.md for full analysis.
 - [ ] T012 [US2] Continue training to 20000 episodes; verify ≥40% win rate vs v64
-- [ ] T013 [US2] Apply constitution experiment documentation (log training + eval results)
+  ⚠️ BLOCKED: No evidence that extended training will improve results with current pipeline.
+- [X] T013 [US2] Apply constitution experiment documentation (log training + eval results)
 
 ---
 
 ## Phase 5: Polish & Cross-Cutting Concerns
 
 - [ ] T014 Build best checkpoint as Makefile default AGENT (update AGENTS.md, Makefile)
+  ⚠️ DEFERRED: No effective RL policy to promote. Best remains v64 baseline (agent_v65.py).
 
 ---
 

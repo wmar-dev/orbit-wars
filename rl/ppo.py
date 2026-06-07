@@ -173,8 +173,10 @@ class RolloutBuffer:
 # ---------------------------------------------------------------------------
 # Opponent scheduling
 # ---------------------------------------------------------------------------
-def get_opponent(episode, strong_opponent, checkpoints_dir):
+def get_opponent(episode, strong_opponent, checkpoints_dir, no_curriculum=False):
     import random as _random
+    if no_curriculum:
+        return strong_opponent or "random"
     if episode < 200:
         return "random"
     if episode < 500 or strong_opponent is None:
@@ -264,9 +266,8 @@ def ppo_loss_fn(net, obs_b, act_b, logp_b, adv_b, ret_b, mask_b):
 def train(args):
     ckpt_dir = Path(args.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
-    log_dir = Path(__file__).parent / "logs"
-    log_dir.mkdir(parents=True, exist_ok=True)
-    log_path = log_dir / "ppo_train.csv"
+    log_path = Path(args.log_file) if args.log_file else Path(__file__).parent / "logs" / "ppo_train.csv"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
 
     net = PolicyNet()
     mx.eval(net.parameters())
@@ -292,7 +293,7 @@ def train(args):
 
     buf      = RolloutBuffer(ROLLOUT_STEPS, OBS_SIZE)
     episode  = start_episode
-    opponent = get_opponent(episode, args.opponent, ckpt_dir)
+    opponent = get_opponent(episode, args.opponent, ckpt_dir, args.no_curriculum)
     env      = OrbitWarsEnv(opponent=opponent, seed=args.seed)
     obs, _   = env.reset()
     ep_reward = 0.0
@@ -326,7 +327,7 @@ def train(args):
                 writer.writerow([episode, f"{ep_reward:.4f}", ep_steps,
                                   f"{elapsed:.1f}", opponent])
                 csv_file.flush()
-                if episode % 50 == 0:
+                if episode % args.log_frequency == 0:
                     print(f"ep={episode:5d} reward={ep_reward:+.3f} "
                           f"steps={ep_steps} t={elapsed:.1f}s opp={opponent[:25]}")
                 episode += 1
@@ -337,13 +338,17 @@ def train(args):
                 if episode % CHECKPOINT_EVERY == 0:
                     ckpt_path = ckpt_dir / f"ppo_ep{episode:05d}.npz"
                     save_checkpoint(net, episode, None, ckpt_path)
+                    pt_path = ckpt_dir / f"ppo_ep{episode:05d}.pt"
+                    _save_torch_compat(net, pt_path, episode)
                     all_ckpts = sorted(ckpt_dir.glob("ppo_ep*.npz"),
                                        key=lambda p: int(p.stem.split("ep")[1]))
                     for old in all_ckpts[:-5]:
                         old.unlink(missing_ok=True)
+                        old_pt = ckpt_dir / old.name.replace(".npz", ".pt")
+                        old_pt.unlink(missing_ok=True)
                     print(f"  Checkpoint saved: {ckpt_path}")
 
-                new_opp = get_opponent(episode, args.opponent, ckpt_dir)
+                new_opp = get_opponent(episode, args.opponent, ckpt_dir, args.no_curriculum)
                 if new_opp != opponent:
                     opponent = new_opp
                     env.close()
@@ -452,9 +457,13 @@ def _save_torch_compat(net, path, episode):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--episodes",       type=int,  default=1000)
-    parser.add_argument("--opponent",       type=str,  default="random")
+    parser.add_argument("--opponent",       type=str,  default="agent_v64.py")
     parser.add_argument("--checkpoint-dir", type=str,  default="rl/checkpoints")
     parser.add_argument("--seed",           type=int,  default=0)
     parser.add_argument("--resume",         action="store_true")
+    parser.add_argument("--log-file",       type=str,  default=None)
+    parser.add_argument("--log-frequency",  type=int,  default=50)
+    parser.add_argument("--no-curriculum",  action="store_true",
+                        help="Skip random/self-play curriculum; always use opponent")
     args = parser.parse_args()
     train(args)

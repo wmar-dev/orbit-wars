@@ -1,5 +1,6 @@
 COMPETITION  := orbit-wars
 AGENT        := agent_v65.py
+EVAL_RL      ?= /tmp/rl_agent.py
 RENDER_AGENT    ?= agent_v64.py
 RENDER_OPPONENT ?= random
 RENDER_OUT      ?= render_4player_out.ipynb
@@ -10,10 +11,10 @@ EPISODE_ID   ?=
 VENV         := .venv
 UV           := uv
 
-RL_OPPONENT ?= agent_v38.py
+RL_OPPONENT ?= agent_v64.py
 RL_EPISODES ?= 1000
 
-.PHONY: venv install test eval selfplay opponents eval4p submit status episodes replay logs leaderboard render4 render2 help train-ppo train-dqn train-a2c
+.PHONY: venv install test eval eval-rl selfplay opponents eval4p submit status episodes replay logs leaderboard render4 render2 help train-ppo train-dqn train-a2c
 
 help:
 	@echo "Usage:"
@@ -21,6 +22,7 @@ help:
 	@echo "  make install                          Install kaggle-environments and kaggle CLI"
 	@echo "  make test                             Run agent vs random locally"
 	@echo "  make eval                             Run $(AGENT) vs main.py (10 games)"
+	@echo "  make eval-rl                          Run exported RL policy vs $(AGENT) (10 games)"
 	@echo "  make selfplay                         Run $(AGENT) vs itself (10 games)"
 	@echo "  make opponents                        Sweep $(AGENT) vs all known opponents"
 	@echo "  make eval4p                           4-player eval: $(AGENT) vs random"
@@ -50,6 +52,10 @@ final = env.steps[-1]; \
 
 eval:
 	$(UV) run python eval.py h2h --agent0 $(AGENT) --agent1 main.py --games 10 --swap
+
+eval-rl:
+	$(UV) run python rl/export.py --checkpoint rl/checkpoints/ppo_best.pt --output $(EVAL_RL) --algo ppo --verify 2>&1 | tail -1; \
+	$(UV) run python eval.py h2h --agent0 $(EVAL_RL) --agent1 $(AGENT) --games 10 --swap
 
 selfplay:
 	$(UV) run python eval.py h2h --agent0 $(AGENT) --agent1 $(AGENT) --games 10

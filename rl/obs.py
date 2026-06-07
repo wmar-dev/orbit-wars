@@ -204,7 +204,7 @@ def decode_action(action: np.ndarray, obs, player_id: int) -> list:
     Each command is [source_id, target_angle, num_ships] matching the format
     used by the existing agent files (e.g. agent_v38.py).
 
-    fraction_idx: 0=no-op, 1=25%, 2=50%, 3=75%, 4=100% of surplus
+    fraction_idx: 0=25%, 1=50%, 2=75%, 3=100% of surplus
     """
     FRACTIONS = [0.25, 0.5, 0.75, 1.0]  # no-op removed; always send ships
 
