@@ -244,8 +244,11 @@ Active feature: `025-experiments-round-5`
 Plan: `specs/025-experiments-round-5/plan.md`
 Spec: `specs/025-experiments-round-5/spec.md`
 
-Three experiments on agent_v64 to close the slawekbiel gap and improve 4-player FFA:
-1. **P1** Multi-source coordinated attack — beam search candidates with 2 sources on same target
-2. **P2** Fleet-size-optimized dispatch — iterative convergence + oversend for distant targets
-3. **P3** 4-player state adaptation — adjust aggressiveness by opponent count
+Four experiments on agent_v64 to close the slawekbiel gap:
+1. **P1** Multi-source coordinated attack — DISCARDED (12% vs v64)
+2. **P2** Fleet-size-optimized dispatch — DISCARDED (10% vs v64)
+3. **P3** 4-player state adaptation — DISCARDED (48% vs v64)
+4. **P4** Endgame elimination focus — DISCARDED (0% vs v64)
+
+Combined: all discarded. v65 set to v64 baseline (all toggles false). v64 remains current best at 54% vs v63.
 <!-- SPECKIT END -->

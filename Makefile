@@ -1,5 +1,5 @@
 COMPETITION  := orbit-wars
-AGENT        := agent_v64.py
+AGENT        := agent_v65.py
 RENDER_AGENT    ?= agent_v64.py
 RENDER_OPPONENT ?= random
 RENDER_OUT      ?= render_4player_out.ipynb

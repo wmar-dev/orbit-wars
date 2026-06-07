@@ -28,10 +28,10 @@ description: "Task list for experiments round 5 implementation"
 
 **Purpose**: Create agent_v65.py from frozen v64 baseline, add experiment toggle constants
 
-- [ ] T001 Create agent_v65.py by copying agent_v64.py
-- [ ] T002 Update docstring header in agent_v65.py to reflect round 5 experiments
-- [ ] T003 Add three new toggle constants (MULTI_SOURCE_ENABLED, FLEET_SIZE_OPT_ENABLED, FFA_ADAPT_ENABLED) after the v64 toggle section in agent_v65.py
-- [ ] T004 [P] Add _count_opponents helper function before _greedy_moves in agent_v65.py
+- [X] T001 Create agent_v65.py by copying agent_v64.py
+- [X] T002 Update docstring header in agent_v65.py to reflect round 5 experiments
+- [X] T003 Add three new toggle constants (MULTI_SOURCE_ENABLED, FLEET_SIZE_OPT_ENABLED, FFA_ADAPT_ENABLED) after the v64 toggle section in agent_v65.py
+- [X] T004 [P] Add _count_opponents helper function before _greedy_moves in agent_v65.py
 
 ---
 
@@ -49,8 +49,8 @@ description: "Task list for experiments round 5 implementation"
 
 ### Implementation for User Story 1
 
-- [ ] T005 [P] [US1] Add _build_target_to_sources_map helper after _compute_top_k_targets in agent_v65.py
-- [ ] T006 [US1] Add multi-source candidate generation block inside _gen_beam_candidates (before the empty-dispatch fallback) in agent_v65.py, gated by MULTI_SOURCE_ENABLED
+- [X] T005 [P] [US1] Add _build_target_to_sources_map helper after _compute_top_k_targets in agent_v65.py
+- [X] T006 [US1] Add multi-source candidate generation block inside _gen_beam_candidates (before the empty-dispatch fallback) in agent_v65.py, gated by MULTI_SOURCE_ENABLED
 
 **Implementation Detail**: See research.md "Target → Source Mapping" section and quickstart.md Step 3 for exact algorithm.
 
@@ -66,10 +66,10 @@ description: "Task list for experiments round 5 implementation"
 
 ### Implementation for User Story 2
 
-- [ ] T007 [US1,US2] Add fleet_speed cache dict (optional optimization) near fleet_speed function in agent_v65.py
-- [ ] T008 [US2] Replace _enemy_fleet_size body with iterative convergence loop (gated by FLEET_SIZE_OPT_ENABLED) in agent_v65.py
-- [ ] T009 [US2] Add oversend logic at end of _enemy_fleet_size: apply 1.2–1.5× multiplier when target.production ≥ 8 and distance > 40 in agent_v65.py
-- [ ] T010 [US2] Fix neutral capture sizing in _greedy_moves (line ~672 in v64): replace `ships_needed = best_target.ships + 1` with production-aware formula gated by FLEET_SIZE_OPT_ENABLED in agent_v65.py
+- [X] T007 [US1,US2] Add fleet_speed cache dict (optional optimization) near fleet_speed function in agent_v65.py
+- [X] T008 [US2] Replace _enemy_fleet_size body with iterative convergence loop (gated by FLEET_SIZE_OPT_ENABLED) in agent_v65.py
+- [X] T009 [US2] Add oversend logic at end of _enemy_fleet_size: apply 1.2–1.5× multiplier when target.production ≥ 8 and distance > 40 in agent_v65.py
+- [X] T010 [US2] Fix neutral capture sizing in _greedy_moves (line ~672 in v64): replace `ships_needed = best_target.ships + 1` with production-aware formula gated by FLEET_SIZE_OPT_ENABLED in agent_v65.py
 
 **Implementation Detail**: See research.md "Fleet-Size-Optimized Dispatch" and quickstart.md Step 4 for exact code.
 
@@ -85,9 +85,9 @@ description: "Task list for experiments round 5 implementation"
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Modify _greedy_moves garrison floor computation to apply gff_mult based on opponent_count (gated by FFA_ADAPT_ENABLED) in agent_v65.py
-- [ ] T012 [US3] Modify _greedy_moves SPLINTER_WINDOW reference to use adapted splinter_window value (gated by FFA_ADAPT_ENABLED) in agent_v65.py
-- [ ] T013 [US3] Wire _count_opponents into _greedy_moves: compute opponent_count once at start of dispatch loop in agent_v65.py
+- [X] T011 [US3] Modify _greedy_moves garrison floor computation to apply gff_mult based on opponent_count (gated by FFA_ADAPT_ENABLED) in agent_v65.py
+- [X] T012 [US3] Modify _greedy_moves SPLINTER_WINDOW reference to use adapted splinter_window value (gated by FFA_ADAPT_ENABLED) in agent_v65.py
+- [X] T013 [US3] Wire _count_opponents into _greedy_moves: compute opponent_count once at start of dispatch loop in agent_v65.py
 
 **Implementation Detail**: See research.md "4-Player State Adaptation" and quickstart.md Step 5 for exact parameter values.
 
@@ -99,18 +99,18 @@ description: "Task list for experiments round 5 implementation"
 
 **Purpose**: Enable all passing experiments simultaneously and re-evaluate vs v64 baseline.
 
-- [ ] T014 Set all three toggles (MULTI_SOURCE_ENABLED, FLEET_SIZE_OPT_ENABLED, FFA_ADAPT_ENABLED) to True in agent_v65.py (only include experiments that passed their individual evals)
-- [ ] T015 Run combined 50-game eval vs v64 with --swap: record win rate, per-turn timing
-- [ ] T016 Run 4-player eval: v65 vs 3 copies of v64, record average scores
-- [ ] T017 Update Makefile AGENT variable to point to agent_v65.py
-- [ ] T018 Write experiment log in experiments/2026-06-06-experiments-round5.md with hypothesis, change, results, and conclusion for each experiment + combined
+- [X] T014 Set all three toggles (MULTI_SOURCE_ENABLED, FLEET_SIZE_OPT_ENABLED, FFA_ADAPT_ENABLED) to True in agent_v65.py (only include experiments that passed their individual evals)
+- [X] T015 Run combined 50-game eval vs v64 with --swap: record win rate, per-turn timing
+- [X] T016 Run 4-player eval: v65 vs 3 copies of v64, record average scores
+- [X] T017 Update Makefile AGENT variable to point to agent_v65.py
+- [X] T018 Write experiment log in experiments/2026-06-06-experiments-round5.md with hypothesis, change, results, and conclusion for each experiment + combined
 
 ---
 
 ## Phase 7: Polish & Cleanup
 
-- [ ] T019 Verify all three discarded experiments from v64 have their toggles set to False (OPPONENT_MODEL_V3_ENABLED, PHASE_DETECTION_ENABLED)
-- [ ] T020 Run lint/typecheck: `flake8 agent_v65.py` or `python -m py_compile agent_v65.py`
+- [X] T019 Verify all three discarded experiments from v64 have their toggles set to False (OPPONENT_MODEL_V3_ENABLED, PHASE_DETECTION_ENABLED)
+- [X] T020 Run lint/typecheck: `flake8 agent_v65.py` or `python -m py_compile agent_v65.py`
 
 ---
 
