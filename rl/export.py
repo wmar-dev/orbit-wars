@@ -30,6 +30,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from rl.obs import OBS_SIZE, MAX_PLANETS, NUM_FLEETS_PER_TURN
 
 
 def load_weights(checkpoint_path: str, algo: str) -> dict:
@@ -44,18 +45,21 @@ def numpy_forward(weights: dict, x: np.ndarray):
     """
     Numpy reimplementation of PolicyNet.forward().
     x: shape (obs_size,) float32
-    Returns: (src_logits, tgt_logits, frac_logits) — each shape (n,)
+    Returns: (src_logits_list, tgt_logits_list, frac_logits_list) — each is list of 5 arrays
     """
-    # Layer 1 (MLX uses fc1/fc2; old PyTorch used backbone.0/backbone.2)
     k1w = "fc1.weight" if "fc1.weight" in weights else "backbone.0.weight"
     k1b = "fc1.bias"   if "fc1.bias"   in weights else "backbone.0.bias"
     k2w = "fc2.weight" if "fc2.weight" in weights else "backbone.2.weight"
     k2b = "fc2.bias"   if "fc2.bias"   in weights else "backbone.2.bias"
     h = np.maximum(0.0, x @ weights[k1w].T + weights[k1b])
     h = np.maximum(0.0, h @ weights[k2w].T + weights[k2b])
-    src_logits  = h @ weights["actor_src.weight"].T  + weights["actor_src.bias"]
-    tgt_logits  = h @ weights["actor_tgt.weight"].T  + weights["actor_tgt.bias"]
-    frac_logits = h @ weights["actor_frac.weight"].T + weights["actor_frac.bias"]
+    src_logits  = []
+    tgt_logits  = []
+    frac_logits = []
+    for i in range(NUM_FLEETS_PER_TURN):
+        src_logits.append(h @ weights[f"actor_src_{i}.weight"].T  + weights[f"actor_src_{i}.bias"])
+        tgt_logits.append(h @ weights[f"actor_tgt_{i}.weight"].T  + weights[f"actor_tgt_{i}.bias"])
+        frac_logits.append(h @ weights[f"actor_frac_{i}.weight"].T + weights[f"actor_frac_{i}.bias"])
     return src_logits, tgt_logits, frac_logits
 
 
@@ -68,12 +72,13 @@ def verify_numpy_matches_torch(weights: dict, checkpoint_path: str, n_trials: in
         x_np = np.random.randn(OBS_SIZE).astype(np.float32)
         src1, tgt1, frac1 = numpy_forward(weights, x_np)
         src2, tgt2, frac2 = numpy_forward(weights, x_np)
-        err = max(
-            np.abs(src1  - src2).max(),
-            np.abs(tgt1  - tgt2).max(),
-            np.abs(frac1 - frac2).max(),
-        )
-        max_err = max(max_err, err)
+        for i in range(NUM_FLEETS_PER_TURN):
+            err = max(
+                np.abs(src1[i]  - src2[i]).max(),
+                np.abs(tgt1[i]  - tgt2[i]).max(),
+                np.abs(frac1[i] - frac2[i]).max(),
+            )
+            max_err = max(max_err, err)
 
     if max_err > 1e-10:
         raise ValueError(f"Numpy forward pass is non-deterministic: max error = {max_err:.2e}")
@@ -86,6 +91,14 @@ Checkpoint episode: {episode}
 Algorithm: {algo}
 
 Self-contained: imports only stdlib + numpy (Principle VI compliant).
+
+Observation layout (560 floats):
+  [0:280]    40 planet slots × 7 features
+  [280:320]   8 fleet-hot slots × 5 features
+  [320:446]  42 fleet-summary bins × 3 features
+  [446:476]  10 comet slots × 3 features
+  [476:480]   4 global features
+  [480:560]  80 mask bits (float32 0/1)
 """
 
 import base64
@@ -99,35 +112,51 @@ import numpy as np
 # ---------------------------------------------------------------------------
 _WEIGHTS_B64 = """{weights_b64}"""
 
-# Decode once at import time
 _W = pickle.loads(base64.b64decode(_WEIGHTS_B64))
 
 # Observation encoding constants (mirrored from rl/obs.py)
-_MAX_PLANETS = 12
-_MAX_FLEETS  = 30
-_MAX_COMETS  = 10
-_OBS_SIZE    = 319
-_M_START     = 267
+_MAX_PLANETS  = 40
+_FLEET_HOT    = 8
+_FLEET_SUM    = 42
+_MAX_COMETS   = 10
+_OBS_SIZE     = 560
+_M_START      = 480
+_MASK_BITS    = 80
+_NUM_FLEETS   = 5
 _GARRISON_FACTOR = 3
-_FRACTIONS   = [0.25, 0.5, 0.75, 1.0]  # no-op removed
+_FRACTIONS    = [0.25, 0.5, 0.75, 1.0]
+
+# Offsets
+_OFF_PLANETS    = 0
+_OFF_FLEET_HOT  = _MAX_PLANETS * 7
+_OFF_FLEET_SUM  = _OFF_FLEET_HOT + _FLEET_HOT * 5
+_OFF_COMETS     = _OFF_FLEET_SUM + _FLEET_SUM * 3
+_OFF_GLOBALS    = _OFF_COMETS + _MAX_COMETS * 3
 
 
-def _angle(x, y, cx=50.0, cy=50.0):
+def _dist_from_center(x, y, cx=50.0, cy=50.0):
+    return math.hypot(x - cx, y - cy)
+
+
+def _angle_from_center(x, y, cx=50.0, cy=50.0):
     return math.atan2(y - cy, x - cx)
 
 
 def _encode(obs, player_id):
     vec  = np.zeros(_OBS_SIZE, dtype=np.float32)
-    mask = np.zeros(52, dtype=bool)
+    mask = np.zeros(_MASK_BITS, dtype=bool)
 
     raw_planets = obs.planets
     raw_fleets  = obs.fleets
     raw_comets  = obs.comets
 
-    sorted_planets = sorted(raw_planets, key=lambda p: _angle(p[2], p[3]))
+    # ----- Planets -----
+    sorted_planets = sorted(raw_planets, key=lambda p: _angle_from_center(p[2], p[3]))
+    planet_id_to_slot = {{}}
     for slot, p in enumerate(sorted_planets[:_MAX_PLANETS]):
         pid, owner, x, y, radius, ships, prod = p
-        base = slot * 7
+        planet_id_to_slot[pid] = slot
+        base = _OFF_PLANETS + slot * 7
         if owner == player_id:
             vec[base]     = 1.0
         elif owner == -1:
@@ -138,12 +167,13 @@ def _encode(obs, player_id):
         vec[base + 4] = y / 100.0
         vec[base + 5] = ships / 500.0
         vec[base + 6] = prod / 10.0
-        mask[slot + _MAX_PLANETS] = True
+        mask[slot + _MAX_PLANETS] = True  # target-valid
 
-    sorted_fleets = sorted(raw_fleets, key=lambda f: (f[2]-50)**2 + (f[3]-50)**2)
-    for slot, f in enumerate(sorted_fleets[:_MAX_FLEETS]):
+    # ----- Fleets: hot slots (closest 8) -----
+    sorted_fleets = sorted(raw_fleets, key=lambda f: _dist_from_center(f[2], f[3]))
+    for slot, f in enumerate(sorted_fleets[:_FLEET_HOT]):
         fid, owner, x, y, angle, fpid, ships = f
-        base = 84 + slot * 5
+        base = _OFF_FLEET_HOT + slot * 5
         if owner == player_id:
             vec[base]     = 1.0
         elif owner == -1:
@@ -153,6 +183,23 @@ def _encode(obs, player_id):
         vec[base + 3] = x / 100.0
         vec[base + 4] = y / 100.0
 
+    # ----- Fleets: summary bins -----
+    n_bins = _FLEET_SUM // 3
+    for ot, ov in [(0, player_id), (1, -1), (2, None)]:
+        if ov is None:
+            ff = [f for f in raw_fleets if f[1] not in (player_id, -1)]
+        else:
+            ff = [f for f in raw_fleets if f[1] == ov]
+        for f in ff:
+            fid, owner, x, y, angle, fpid, ships = f
+            dist = _dist_from_center(x, y)
+            bi = min(int(dist / (100.0 / n_bins)), n_bins - 1)
+            base = _OFF_FLEET_SUM + (ot * n_bins + bi) * 3
+            vec[base]     += ships / 500.0
+            vec[base + 1] += math.sin(angle)
+            vec[base + 2] += math.cos(angle)
+
+    # ----- Comets -----
     def _cs(c):
         if isinstance(c, dict):
             return c.get("path_index", 999)
@@ -175,24 +222,27 @@ def _encode(obs, player_id):
             cx_sum += pos[0]; cy_sum += pos[1]; count += 1
         if count == 0:
             continue
-        base = 234 + slot * 3
+        base = _OFF_COMETS + slot * 3
         vec[base]     = (cx_sum / count) / 100.0
         vec[base + 1] = (cy_sum / count) / 100.0
         vec[base + 2] = float(count) * 5.0 / 500.0
 
+    # ----- Globals -----
     step = obs.step if hasattr(obs, "step") else 0
-    vec[264] = player_id / 3.0
-    vec[265] = float(obs.angular_velocity) * 10.0
-    vec[266] = step / 200.0
+    vec[_OFF_GLOBALS]     = player_id / 3.0
+    vec[_OFF_GLOBALS + 1] = float(obs.angular_velocity) * 10.0
+    vec[_OFF_GLOBALS + 2] = step / 200.0
+    vec[_OFF_GLOBALS + 3] = len(raw_planets) / _MAX_PLANETS
 
+    # ----- Source-valid mask -----
     for slot, p in enumerate(sorted_planets[:_MAX_PLANETS]):
         pid, owner, x, y, radius, ships, prod = p
         if owner == player_id:
             garrison = max(_GARRISON_FACTOR * prod, 1)
             if ships - garrison > 0:
-                mask[slot] = True
+                mask[slot] = True  # source-valid
 
-    vec[_M_START:_M_START + 52] = mask.astype(np.float32)
+    vec[_M_START:_M_START + _MASK_BITS] = mask.astype(np.float32)
     return vec, mask, sorted_planets
 
 
@@ -203,23 +253,21 @@ def _forward(x):
     _k2b = "fc2.bias"   if "fc2.bias"   in _W else "backbone.2.bias"
     h = np.maximum(0.0, x @ _W[_k1w].T + _W[_k1b])
     h = np.maximum(0.0, h @ _W[_k2w].T + _W[_k2b])
-    src  = h @ _W["actor_src.weight"].T  + _W["actor_src.bias"]
-    tgt  = h @ _W["actor_tgt.weight"].T  + _W["actor_tgt.bias"]
-    frac = h @ _W["actor_frac.weight"].T + _W["actor_frac.bias"]
-    return src, tgt, frac
-
-
-_prev_obs = None
+    src_logits  = []
+    tgt_logits  = []
+    frac_logits = []
+    for i in range(_NUM_FLEETS):
+        src_logits.append(h @ _W[f"actor_src_{{i}}.weight"].T  + _W[f"actor_src_{{i}}.bias"])
+        tgt_logits.append(h @ _W[f"actor_tgt_{{i}}.weight"].T  + _W[f"actor_tgt_{{i}}.bias"])
+        frac_logits.append(h @ _W[f"actor_frac_{{i}}.weight"].T + _W[f"actor_frac_{{i}}.bias"])
+    return src_logits, tgt_logits, frac_logits
 
 
 def agent(obs, config=None):
-    global _prev_obs
     player_id = obs.player
     vec, mask, sorted_planets = _encode(obs, player_id)
-
     src_logits, tgt_logits, frac_logits = _forward(vec)
 
-    # Apply action mask
     src_valid = mask[:_MAX_PLANETS]
     tgt_valid = mask[_MAX_PLANETS:_MAX_PLANETS*2]
     if not src_valid.any():
@@ -227,36 +275,45 @@ def agent(obs, config=None):
     if not tgt_valid.any():
         tgt_valid[:] = True
 
-    src_logits  = np.where(src_valid, src_logits,  -1e9)
-    tgt_logits  = np.where(tgt_valid, tgt_logits,  -1e9)
+    moves       = []
+    used_src_ids = set()
 
-    src_slot  = int(np.argmax(src_logits))
-    tgt_slot  = int(np.argmax(tgt_logits))
-    frac_idx  = int(np.argmax(frac_logits))
-    fraction  = _FRACTIONS[min(frac_idx, len(_FRACTIONS) - 1)]
+    for i in range(_NUM_FLEETS):
+        s_logits = np.where(src_valid, src_logits[i], -1e9)
+        t_logits = np.where(tgt_valid, tgt_logits[i], -1e9)
+        f_logits = frac_logits[i]
 
-    _prev_obs = obs
+        src_slot = int(np.argmax(s_logits))
+        tgt_slot = int(np.argmax(t_logits))
+        frac_idx = int(np.argmax(f_logits))
 
-    if src_slot == tgt_slot:
-        return []
-    if src_slot >= len(sorted_planets) or tgt_slot >= len(sorted_planets):
-        return []
+        if src_slot == tgt_slot:
+            continue
+        if src_slot >= len(sorted_planets) or tgt_slot >= len(sorted_planets):
+            continue
 
-    src_p = sorted_planets[src_slot]
-    tgt_p = sorted_planets[tgt_slot]
-    src_pid, src_owner, _, _, _, src_ships, src_prod = src_p
+        src_p = sorted_planets[src_slot]
+        tgt_p = sorted_planets[tgt_slot]
+        src_pid, src_owner = src_p[0], src_p[1]
+        src_ships, src_prod = src_p[5], src_p[6]
 
-    if src_owner != player_id:
-        return []
+        if src_owner != player_id:
+            continue
+        if src_pid in used_src_ids:
+            continue
 
-    garrison  = max(_GARRISON_FACTOR * src_prod, 1)
-    surplus   = src_ships - garrison
-    if surplus <= 0:
-        return []
+        garrison = max(_GARRISON_FACTOR * src_prod, 1)
+        surplus  = src_ships - garrison
+        if surplus <= 0:
+            continue
 
-    num_ships = max(1, int(surplus * fraction))
-    angle = math.atan2(tgt_p[3] - src_p[3], tgt_p[2] - src_p[2])
-    return [[src_pid, angle, num_ships]]
+        fraction  = _FRACTIONS[min(frac_idx, len(_FRACTIONS) - 1)]
+        num_ships = max(1, int(surplus * fraction))
+        angle = math.atan2(tgt_p[3] - src_p[3], tgt_p[2] - src_p[2])
+        moves.append([src_pid, angle, num_ships])
+        used_src_ids.add(src_pid)
+
+    return moves
 '''
 
 

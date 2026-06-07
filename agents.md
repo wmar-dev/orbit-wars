@@ -240,9 +240,9 @@ kaggle competitions leaderboard orbit-wars -s
 ```
 
 <!-- SPECKIT START -->
-Active feature: `026-rl-training`
-Plan: `specs/026-rl-training/plan.md`
-Spec: `specs/026-rl-training/spec.md`
+Active feature: `027-rl-full-obs`
+Plan: `specs/027-rl-full-obs/plan.md`
+Spec: `specs/027-rl-full-obs/spec.md`
 
-RL training pipeline using PPO (MLX/Apple Silicon GPU). Train policy network against progressively stronger opponents — random → agent_v64 → self-play. Three user stories: pipeline setup verification, training vs strong opponents, evaluation harness.
+Overhaul RL observation encoder (40 planets, 50 fleets) and action space (5 fleets/turn). Fixes the two root causes of 0% win rate in round 6: blind observation (MAX_PLANETS=12) and crippled single-fleet action.
 <!-- SPECKIT END -->

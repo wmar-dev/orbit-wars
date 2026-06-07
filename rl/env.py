@@ -1,11 +1,11 @@
 """
-T005: OrbitWarsEnv — gymnasium wrapper over the kaggle orbit_wars trainer API.
+OrbitWarsEnv — gymnasium wrapper over the kaggle orbit_wars trainer API.
 
-Observation space: Box(319,) float32  (see rl/obs.py for layout)
-Action space:      MultiDiscrete([12, 12, 5])
-  action[0] = source planet slot  (0–11)
-  action[1] = target planet slot  (0–11)
-  action[2] = ship fraction index (0=no-op, 1=25%, 2=50%, 3=75%, 4=100% of surplus)
+Observation space: Box(560,) float32  (see rl/obs.py for layout)
+Action space:      MultiDiscrete([40,40,4]*5)  — 5 fleet slots per turn
+  action[i*3]   = source planet slot  (0–39)
+  action[i*3+1] = target planet slot  (0–39)
+  action[i*3+2] = ship fraction index (0=25%, 1=50%, 2=75%, 3=100% of surplus)
 
 Reward: per-turn blended signal from inlined reward_signal.py constants.
 Terminal reward replaces per-turn reward on the final step.
@@ -106,7 +106,7 @@ class OrbitWarsEnv(gym.Env):
         self.observation_space = spaces.Box(
             low=-2.0, high=2.0, shape=(OBS_SIZE,), dtype=np.float32
         )
-        self.action_space = spaces.MultiDiscrete([12, 12, 4])  # 4 fractions: 25/50/75/100%
+        self.action_space = spaces.MultiDiscrete([40, 40, 4] * 5)  # 5 fleet slots, each: src/tgt/frac
         self._env = None
         self._trainer = None
         self._prev_obs = None

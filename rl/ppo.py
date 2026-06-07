@@ -1,15 +1,10 @@
 """
-T007: CleanRL-style PPO training for Orbit Wars — MLX backend (Apple Silicon GPU).
-
-Usage:
-    uv run python rl/ppo.py --episodes 1000 --opponent random
-    uv run python rl/ppo.py --episodes 5000 --opponent agent_v38.py --resume
+PPO training for Orbit Wars — full observation, multi-fleet action.
+MLX backend (Apple Silicon GPU).
 
 Architecture:
-    Shared MLP backbone (2 × 256 ReLU) → actor heads (src, tgt, frac) + value head
-    Action masking: -1e9 added to invalid source/target logits before softmax
-    GAE: gamma=0.99, lambda=0.95
-    PPO clip: epsilon=0.2
+  Shared MLP (2 × 256 ReLU) → 5×(40+40+4) actor heads + value head
+  5 independent fleet slots per turn, each: source, target, ship fraction
 """
 
 import argparse
@@ -26,11 +21,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from rl.env import OrbitWarsEnv
-from rl.obs import MAX_PLANETS, OBS_SIZE
+from rl.obs import MAX_PLANETS, OBS_SIZE, NUM_FLEETS_PER_TURN, NUM_ACTION_VALUES
 
-# ---------------------------------------------------------------------------
-# Hyperparameters
-# ---------------------------------------------------------------------------
 HIDDEN     = 256
 GAMMA      = 0.99
 LAM        = 0.95
@@ -44,51 +36,49 @@ MAX_GRAD   = 0.5
 ROLLOUT_STEPS    = 512
 CHECKPOINT_EVERY = 200
 
-
-# ---------------------------------------------------------------------------
-# Policy Network (MLX)
-# ---------------------------------------------------------------------------
 class PolicyNet(nn.Module):
     def __init__(self, obs_size=OBS_SIZE, hidden=HIDDEN):
         super().__init__()
         self.fc1 = nn.Linear(obs_size, hidden)
         self.fc2 = nn.Linear(hidden, hidden)
-        self.actor_src  = nn.Linear(hidden, MAX_PLANETS)
-        self.actor_tgt  = nn.Linear(hidden, MAX_PLANETS)
-        self.actor_frac = nn.Linear(hidden, 4)  # 25/50/75/100% — no-op removed
-        self.critic     = nn.Linear(hidden, 1)
+        self.critic = nn.Linear(hidden, 1)
+        for i in range(NUM_FLEETS_PER_TURN):
+            setattr(self, f"actor_src_{i}",  nn.Linear(hidden, MAX_PLANETS))
+            setattr(self, f"actor_tgt_{i}",  nn.Linear(hidden, MAX_PLANETS))
+            setattr(self, f"actor_frac_{i}", nn.Linear(hidden, 4))
 
     def __call__(self, x, src_mask=None, tgt_mask=None):
         h = nn.relu(self.fc1(x))
         h = nn.relu(self.fc2(h))
-        src_logits  = self.actor_src(h)
-        tgt_logits  = self.actor_tgt(h)
-        frac_logits = self.actor_frac(h)
-        if src_mask is not None:
-            src_logits  = mx.where(src_mask,  src_logits,  mx.full(src_logits.shape,  -1e9))
-        if tgt_mask is not None:
-            tgt_logits  = mx.where(tgt_mask,  tgt_logits,  mx.full(tgt_logits.shape,  -1e9))
+        src_logits  = []
+        tgt_logits  = []
+        frac_logits = []
+        for i in range(NUM_FLEETS_PER_TURN):
+            s = getattr(self, f"actor_src_{i}")(h)
+            t = getattr(self, f"actor_tgt_{i}")(h)
+            f = getattr(self, f"actor_frac_{i}")(h)
+            if src_mask is not None:
+                s = mx.where(src_mask, s, mx.full(s.shape, -1e9))
+            if tgt_mask is not None:
+                t = mx.where(tgt_mask, t, mx.full(t.shape, -1e9))
+            src_logits.append(s)
+            tgt_logits.append(t)
+            frac_logits.append(f)
         value = self.critic(h).squeeze(-1)
         return src_logits, tgt_logits, frac_logits, value
 
 
 def _sample_categorical(logits):
-    """Sample from categorical distribution using Gumbel-max trick."""
     gumbel = -mx.log(-mx.log(mx.random.uniform(shape=logits.shape) + 1e-10) + 1e-10)
     return mx.argmax(logits + gumbel, axis=-1)
 
 
 def _log_prob_categorical(logits, actions):
-    """Log probability of actions under categorical distribution."""
     log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
-    idx = actions.astype(mx.int32)
-    # Gather log_probs at action indices
-    B = log_probs.shape[0]
-    return log_probs[mx.arange(B), idx]
+    return log_probs[mx.arange(log_probs.shape[0]), actions.astype(mx.int32)]
 
 
 def _entropy_categorical(logits):
-    """Entropy of categorical distribution."""
     log_probs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
     probs = mx.exp(log_probs)
     return -(probs * log_probs).sum(axis=-1)
@@ -96,53 +86,59 @@ def _entropy_categorical(logits):
 
 def get_action_and_value(net, obs, mask, actions=None):
     """
-    obs:    (B, obs_size) float32
-    mask:   (B, 52) float32
-    actions: (B, 3) int32 or None (sample if None)
-    Returns: actions (B,3), log_prob (B,), entropy (B,), value (B,)
+    obs:    (B, obs_size)
+    mask:   (B, 80)  — first 40 = src valid, next 40 = tgt valid
+    actions: (B, 15) or None  — 5 fleet slots × 3 values
+    Returns: actions (B,15), log_prob (B,), entropy (B,), value (B,)
     """
-    src_mask_bool = mask[:, :12] > 0.5
-    tgt_mask_bool = mask[:, 12:24] > 0.5
+    src_mask_bool = mask[:, :40] > 0.5
+    tgt_mask_bool = mask[:, 40:80] > 0.5
 
-    # Fall back to all-valid if no valid sources/targets
     any_src = src_mask_bool.any(axis=1, keepdims=True)
     any_tgt = tgt_mask_bool.any(axis=1, keepdims=True)
     src_mask_bool = mx.logical_or(src_mask_bool, mx.logical_not(any_src))
     tgt_mask_bool = mx.logical_or(tgt_mask_bool, mx.logical_not(any_tgt))
 
-    src_logits, tgt_logits, frac_logits, value = net(obs, src_mask_bool, tgt_mask_bool)
+    src_logits_list, tgt_logits_list, frac_logits_list, value = net(obs, src_mask_bool, tgt_mask_bool)
 
-    if actions is None:
-        src_a  = _sample_categorical(src_logits)
-        tgt_a  = _sample_categorical(tgt_logits)
-        frac_a = _sample_categorical(frac_logits)
-    else:
-        src_a  = actions[:, 0]
-        tgt_a  = actions[:, 1]
-        frac_a = actions[:, 2]
+    total_lp = 0.0
+    total_ent = 0.0
+    act_parts = []
 
-    log_prob = (_log_prob_categorical(src_logits,  src_a)
-                + _log_prob_categorical(tgt_logits, tgt_a)
-                + _log_prob_categorical(frac_logits, frac_a))
-    entropy = (_entropy_categorical(src_logits)
-               + _entropy_categorical(tgt_logits)
-               + _entropy_categorical(frac_logits))
+    for i in range(NUM_FLEETS_PER_TURN):
+        sl = src_logits_list[i]
+        tl = tgt_logits_list[i]
+        fl = frac_logits_list[i]
 
-    act = mx.stack([src_a, tgt_a, frac_a], axis=1)
-    return act, log_prob, entropy, value
+        if actions is None:
+            src_a  = _sample_categorical(sl)
+            tgt_a  = _sample_categorical(tl)
+            frac_a = _sample_categorical(fl)
+        else:
+            src_a  = actions[:, i * 3]
+            tgt_a  = actions[:, i * 3 + 1]
+            frac_a = actions[:, i * 3 + 2]
+
+        total_lp += (_log_prob_categorical(sl, src_a)
+                     + _log_prob_categorical(tl, tgt_a)
+                     + _log_prob_categorical(fl, frac_a))
+        total_ent += (_entropy_categorical(sl)
+                      + _entropy_categorical(tl)
+                      + _entropy_categorical(fl))
+        act_parts.extend([src_a, tgt_a, frac_a])
+
+    act = mx.stack(act_parts, axis=1)
+    return act, total_lp, total_ent, value
 
 
-# ---------------------------------------------------------------------------
-# Rollout buffer (numpy — env side stays CPU)
-# ---------------------------------------------------------------------------
 class RolloutBuffer:
     def __init__(self, steps, obs_size):
         self.obs       = np.zeros((steps, obs_size), dtype=np.float32)
-        self.actions   = np.zeros((steps, 3),        dtype=np.int32)
-        self.log_probs = np.zeros(steps,              dtype=np.float32)
-        self.rewards   = np.zeros(steps,              dtype=np.float32)
-        self.dones     = np.zeros(steps,              dtype=np.float32)
-        self.values    = np.zeros(steps,              dtype=np.float32)
+        self.actions   = np.zeros((steps, NUM_ACTION_VALUES), dtype=np.int32)
+        self.log_probs = np.zeros(steps, dtype=np.float32)
+        self.rewards   = np.zeros(steps, dtype=np.float32)
+        self.dones     = np.zeros(steps, dtype=np.float32)
+        self.values    = np.zeros(steps, dtype=np.float32)
         self.ptr = 0
 
     def add(self, obs, action, log_prob, reward, done, value):
@@ -170,9 +166,6 @@ class RolloutBuffer:
         self.ptr = 0
 
 
-# ---------------------------------------------------------------------------
-# Opponent scheduling
-# ---------------------------------------------------------------------------
 def get_opponent(episode, strong_opponent, checkpoints_dir, no_curriculum=False):
     import random as _random
     if no_curriculum:
@@ -193,12 +186,7 @@ def _latest_checkpoint(checkpoints_dir, prefix):
     return cands[-1] if cands else None
 
 
-# ---------------------------------------------------------------------------
-# Checkpoint save/load (NPZ — no torch dependency)
-# ---------------------------------------------------------------------------
 def save_checkpoint(net, episode, score, path):
-    weights = {k: np.array(v) for k, v in net.parameters().items() if isinstance(v, mx.array)}
-    # Flatten nested param dict to dot-separated keys
     flat = {}
     def _flatten(d, prefix=""):
         for k, v in d.items():
@@ -217,8 +205,6 @@ def load_checkpoint(net, path):
     data = np.load(path, allow_pickle=False)
     episode = int(data["__episode__"][0])
     score   = float(data["__score__"][0])
-
-    # Rebuild nested param dict
     nested = {}
     for key in data.files:
         if key.startswith("__"):
@@ -228,7 +214,6 @@ def load_checkpoint(net, path):
         for part in parts[:-1]:
             d = d.setdefault(part, {})
         d[parts[-1]] = mx.array(data[key])
-
     net.load_weights(list(_flatten_to_list(nested)))
     return episode, score if score >= 0 else None
 
@@ -244,9 +229,6 @@ def _flatten_to_list(d, prefix=""):
     return result
 
 
-# ---------------------------------------------------------------------------
-# PPO loss function
-# ---------------------------------------------------------------------------
 def ppo_loss_fn(net, obs_b, act_b, logp_b, adv_b, ret_b, mask_b):
     _, new_lp, entropy, new_val = get_action_and_value(net, obs_b, mask_b, actions=act_b)
     ratio   = mx.exp(new_lp - logp_b)
@@ -260,9 +242,6 @@ def ppo_loss_fn(net, obs_b, act_b, logp_b, adv_b, ret_b, mask_b):
     return loss, (pg_loss, vf_loss, ent_loss)
 
 
-# ---------------------------------------------------------------------------
-# Training loop
-# ---------------------------------------------------------------------------
 def train(args):
     ckpt_dir = Path(args.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
@@ -272,7 +251,6 @@ def train(args):
     net = PolicyNet()
     mx.eval(net.parameters())
     optimizer = optim.Adam(learning_rate=LR)
-
     loss_and_grad = nn.value_and_grad(net, ppo_loss_fn)
 
     start_episode = 0
@@ -305,10 +283,9 @@ def train(args):
     while episode < start_episode + args.episodes:
         buf.reset()
 
-        # Collect rollout
         for _ in range(ROLLOUT_STEPS):
             obs_mx   = mx.array(obs[None], dtype=mx.float32)
-            mask_mx  = mx.array(obs[267:319][None], dtype=mx.float32)
+            mask_mx  = mx.array(obs[480:560][None], dtype=mx.float32)
             act_mx, lp_mx, _, val_mx = get_action_and_value(net, obs_mx, mask_mx)
             mx.eval(act_mx, lp_mx, val_mx)
 
@@ -341,7 +318,7 @@ def train(args):
                     pt_path = ckpt_dir / f"ppo_ep{episode:05d}.pt"
                     _save_torch_compat(net, pt_path, episode)
                     all_ckpts = sorted(ckpt_dir.glob("ppo_ep*.npz"),
-                                       key=lambda p: int(p.stem.split("ep")[1]))
+                                       key=lambda p: p.stat().st_mtime)
                     for old in all_ckpts[:-5]:
                         old.unlink(missing_ok=True)
                         old_pt = ckpt_dir / old.name.replace(".npz", ".pt")
@@ -362,9 +339,8 @@ def train(args):
         if episode >= start_episode + args.episodes:
             break
 
-        # Compute GAE
         obs_mx  = mx.array(obs[None], dtype=mx.float32)
-        mask_mx = mx.array(obs[267:319][None], dtype=mx.float32)
+        mask_mx = mx.array(obs[480:560][None], dtype=mx.float32)
         _, _, _, last_val_mx = get_action_and_value(net, obs_mx, mask_mx)
         mx.eval(last_val_mx)
         advantages, returns = buf.compute_gae(float(last_val_mx[0]))
@@ -374,9 +350,8 @@ def train(args):
         logp_b   = mx.array(buf.log_probs[:buf.ptr])
         adv_b    = mx.array(advantages)
         ret_b    = mx.array(returns)
-        mask_b   = obs_b[:, 267:319]
+        mask_b   = obs_b[:, 480:560]
 
-        # Normalize advantages
         adv_b = (adv_b - adv_b.mean()) / (adv_b.std() + 1e-8)
         mx.eval(adv_b)
 
@@ -391,18 +366,15 @@ def train(args):
                     obs_b[mb_mx], act_b[mb_mx], logp_b[mb_mx],
                     adv_b[mb_mx], ret_b[mb_mx], mask_b[mb_mx]
                 )
-                # Gradient clipping
                 grads = _clip_grads(grads, MAX_GRAD)
                 optimizer.update(net, grads)
                 mx.eval(net.parameters(), optimizer.state, loss)
 
-    # Save final checkpoint (NPZ for inference)
     final_path = ckpt_dir / f"ppo_ep{episode:05d}.npz"
     save_checkpoint(net, episode, None, final_path)
     best_path = ckpt_dir / "ppo_best.npz"
     import shutil
     shutil.copy(final_path, best_path)
-    # Also save PyTorch-compatible weights for export.py
     _save_torch_compat(net, ckpt_dir / f"ppo_ep{episode:05d}.pt", episode)
     shutil.copy(ckpt_dir / f"ppo_ep{episode:05d}.pt",
                 ckpt_dir / "ppo_best.pt")
@@ -412,7 +384,6 @@ def train(args):
 
 
 def _clip_grads(grads, max_norm):
-    """Clip gradients by global norm."""
     leaves = []
     def _collect(g):
         if isinstance(g, dict):
@@ -435,7 +406,6 @@ def _clip_grads(grads, max_norm):
 
 
 def _save_torch_compat(net, path, episode):
-    """Save weights as a torch-compatible .pt file for use with export.py."""
     import torch
     flat = {}
     def _flatten(d, prefix=""):
@@ -463,7 +433,6 @@ if __name__ == "__main__":
     parser.add_argument("--resume",         action="store_true")
     parser.add_argument("--log-file",       type=str,  default=None)
     parser.add_argument("--log-frequency",  type=int,  default=50)
-    parser.add_argument("--no-curriculum",  action="store_true",
-                        help="Skip random/self-play curriculum; always use opponent")
+    parser.add_argument("--no-curriculum",  action="store_true")
     args = parser.parse_args()
     train(args)
