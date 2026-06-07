@@ -240,14 +240,14 @@ kaggle competitions leaderboard orbit-wars -s
 ```
 
 <!-- SPECKIT START -->
-Active feature: `023-agent-experiments-round-3`
-Plan: `specs/023-agent-experiments-round-3/plan.md`
-Spec: `specs/023-agent-experiments-round-3/spec.md`
+Active feature: `024-experiments-round-4`
+Plan: `specs/024-experiments-round-4/plan.md`
+Spec: `specs/024-experiments-round-4/spec.md`
 
-Three experiments on agent_v62 (current best):
-1. **P1** Evaluate defense interceptor (already in v62, unevaluated)
-2. **P2** Deeper/wider beam search (close 0% slawekbiel gap)
-3. **P3** Fix production-weighted beam eval (v61 regression)
+Three experiments on agent_v63 to close the 0% slawekbiel gap:
+1. **P1** Improved opponent model (v3) — production-weighted simulation
+2. **P2** Multi-turn plan generation — skip candidates in beam search
+3. **P3** Phase-detection dispatch — adjust params by game state
 
-Evals use 50 games with --swap vs v62 baseline.
+Evals use 50 games with --swap vs v63 baseline.
 <!-- SPECKIT END -->
