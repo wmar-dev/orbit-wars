@@ -223,4 +223,18 @@ def decode_action(action: np.ndarray, obs, player_id: int) -> list:
         moves.append([src_pid, angle, num_ships])
         used_src_ids.add(src_pid)
 
+    # Greedy fallback: if all policy actions were invalid, send nearest-enemy-sniper
+    if not moves and raw_planets:
+        my_planets = [(p, max(p[5] - max(GARRISON_FLOOR_FACTOR * p[6], 1), 0))
+                      for p in sorted_planets if p[1] == player_id]
+        my_planets = [(p, s) for p, s in my_planets if s > 0]
+        my_planets.sort(key=lambda x: -x[1])  # most surplus first
+        targets = [p for p in sorted_planets if p[1] != player_id]
+        if my_planets and targets:
+            src_p, surplus = my_planets[0]
+            tgt_p = min(targets, key=lambda t: math.hypot(src_p[2] - t[2], src_p[3] - t[3]))
+            num_ships = max(1, surplus)
+            angle = math.atan2(tgt_p[3] - src_p[3], tgt_p[2] - src_p[2])
+            moves.append([src_p[0], angle, num_ships])
+
     return moves

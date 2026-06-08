@@ -35,6 +35,14 @@ EPOCHS     = 4
 MAX_GRAD   = 0.5
 ROLLOUT_STEPS    = 512
 CHECKPOINT_EVERY = 200
+EVAL_FREQ  = 200
+EVAL_GAMES = 50
+
+CURRICULUM_STAGES = [
+    ("random", 0.8, 500),
+    ("agent_v38.py", 0.6, 1000),
+    ("agent_v64.py", 0.0, 5000),
+]
 
 class PolicyNet(nn.Module):
     def __init__(self, obs_size=OBS_SIZE, hidden=HIDDEN):
@@ -166,18 +174,66 @@ class RolloutBuffer:
         self.ptr = 0
 
 
-def get_opponent(episode, strong_opponent, checkpoints_dir, no_curriculum=False):
-    import random as _random
-    if no_curriculum:
-        return strong_opponent or "random"
-    if episode < 200:
-        return "random"
-    if episode < 500 or strong_opponent is None:
-        return strong_opponent or "random"
-    latest = _latest_checkpoint(checkpoints_dir, "ppo")
-    if latest and _random.random() < 0.5:
-        return str(latest)
-    return strong_opponent
+class CurriculumTracker:
+    def __init__(self, stages=None, no_curriculum=False, initial_episode=0,
+                 fixed_opponent=None):
+        self.stages = stages or CURRICULUM_STAGES
+        self.no_curriculum = no_curriculum
+        self.fixed_opponent = fixed_opponent
+        self.stage_idx = 0
+        self._stage_ep_start = initial_episode
+
+    @property
+    def opponent(self):
+        if self.no_curriculum:
+            return self.fixed_opponent or self.stages[-1][0]
+        return self.stages[self.stage_idx][0]
+
+    @property
+    def min_episodes_for_stage(self):
+        if self.no_curriculum:
+            return 0
+        return self.stages[self.stage_idx][2]
+
+    @property
+    def win_threshold(self):
+        if self.no_curriculum:
+            return 0.0
+        return self.stages[self.stage_idx][1]
+
+    @property
+    def at_final_stage(self):
+        return self.no_curriculum or self.stage_idx >= len(self.stages) - 1
+
+    def episodes_in_stage(self, episode):
+        return episode - self._stage_ep_start
+
+    def advance_if_ready(self, episode, win_rate):
+        if self.no_curriculum or self.at_final_stage:
+            return False
+        min_met = self.episodes_in_stage(episode) >= self.min_episodes_for_stage
+        if win_rate >= self.win_threshold and min_met:
+            self.stage_idx += 1
+            self._stage_ep_start = episode
+            return True
+        return False
+
+
+def run_eval(net, opponent, n_games=EVAL_GAMES):
+    env = OrbitWarsEnv(opponent=opponent)
+    wins = 0
+    for _ in range(n_games):
+        obs, _ = env.reset()
+        done = False
+        while not done:
+            obs_mx = mx.array(obs[None], dtype=mx.float32)
+            mask_mx = mx.array(obs[480:560][None], dtype=mx.float32)
+            act_mx, _, _, _ = get_action_and_value(net, obs_mx, mask_mx)
+            obs, r, done, _, _ = env.step(np.array(act_mx[0]))
+        if r > 0:
+            wins += 1
+    env.close()
+    return wins / n_games
 
 
 def _latest_checkpoint(checkpoints_dir, prefix):
@@ -250,11 +306,18 @@ def train(args):
 
     net = PolicyNet()
     mx.eval(net.parameters())
+
+    if args.bc_pretrain:
+        ep, sc = load_checkpoint(net, args.bc_pretrain)
+        best_score = sc or 0.0
+        print(f"Loaded BC-pretrained weights from {args.bc_pretrain} (epoch {ep}, loss {best_score:.4f})")
+    else:
+        best_score = 0.0
+
     optimizer = optim.Adam(learning_rate=LR)
     loss_and_grad = nn.value_and_grad(net, ppo_loss_fn)
 
     start_episode = 0
-    best_score    = 0.0
 
     if args.resume:
         latest = _latest_checkpoint(ckpt_dir, "ppo")
@@ -267,18 +330,27 @@ def train(args):
     csv_file   = open(log_path, "a", newline="")
     writer     = csv.writer(csv_file)
     if not csv_exists:
-        writer.writerow(["episode", "ep_reward", "ep_steps", "elapsed_s", "opponent"])
+        writer.writerow(["episode", "ep_reward", "ep_steps", "elapsed_s",
+                          "opponent", "stage", "win_rate"])
 
-    buf      = RolloutBuffer(ROLLOUT_STEPS, OBS_SIZE)
-    episode  = start_episode
-    opponent = get_opponent(episode, args.opponent, ckpt_dir, args.no_curriculum)
-    env      = OrbitWarsEnv(opponent=opponent, seed=args.seed)
-    obs, _   = env.reset()
-    ep_reward = 0.0
-    ep_steps  = 0
-    ep_start  = time.time()
+    buf             = RolloutBuffer(ROLLOUT_STEPS, OBS_SIZE)
+    episode         = start_episode
+    curriculum      = CurriculumTracker(no_curriculum=args.no_curriculum,
+                                        initial_episode=start_episode,
+                                        fixed_opponent=args.opponent)
+    opponent        = curriculum.opponent
+    env             = OrbitWarsEnv(opponent=opponent, seed=args.seed)
+    obs, _          = env.reset()
+    ep_reward       = 0.0
+    ep_steps        = 0
+    ep_start        = time.time()
+    last_eval_ep    = 0
+    current_win_rate = 0.0
 
     print(f"Starting PPO training (MLX GPU): {args.episodes} episodes")
+    if not args.no_curriculum:
+        stages_str = " → ".join(s[0] for s in CURRICULUM_STAGES)
+        print(f"  Curriculum: {stages_str}")
 
     while episode < start_episode + args.episodes:
         buf.reset()
@@ -302,19 +374,35 @@ def train(args):
             if done:
                 elapsed = time.time() - ep_start
                 writer.writerow([episode, f"{ep_reward:.4f}", ep_steps,
-                                  f"{elapsed:.1f}", opponent])
+                                  f"{elapsed:.1f}", opponent,
+                                  curriculum.stage_idx, f"{current_win_rate:.3f}"])
                 csv_file.flush()
                 if episode % args.log_frequency == 0:
                     print(f"ep={episode:5d} reward={ep_reward:+.3f} "
-                          f"steps={ep_steps} t={elapsed:.1f}s opp={opponent[:25]}")
+                          f"steps={ep_steps} t={elapsed:.1f}s opp={opponent[:25]}"
+                          f" stage={curriculum.stage_idx} wr={current_win_rate:.2f}")
                 episode += 1
                 ep_reward = 0.0
                 ep_steps  = 0
                 ep_start  = time.time()
 
+                # Eval and curriculum
+                if episode - last_eval_ep >= EVAL_FREQ:
+                    current_win_rate = run_eval(net, opponent, args.eval_games)
+                    last_eval_ep = episode
+                    print(f"  Eval: {EVAL_GAMES} games vs {opponent[:20]} → "
+                          f"{100*current_win_rate:.0f}% win rate")
+                    advanced = curriculum.advance_if_ready(episode, current_win_rate)
+                    if advanced:
+                        new_opp = curriculum.opponent
+                        print(f"  Curriculum advance: {opponent[:20]} → {new_opp[:20]}")
+                        opponent = new_opp
+                        env.close()
+                        env = OrbitWarsEnv(opponent=opponent)
+
                 if episode % CHECKPOINT_EVERY == 0:
                     ckpt_path = ckpt_dir / f"ppo_ep{episode:05d}.npz"
-                    save_checkpoint(net, episode, None, ckpt_path)
+                    save_checkpoint(net, episode, current_win_rate, ckpt_path)
                     pt_path = ckpt_dir / f"ppo_ep{episode:05d}.pt"
                     _save_torch_compat(net, pt_path, episode)
                     all_ckpts = sorted(ckpt_dir.glob("ppo_ep*.npz"),
@@ -324,13 +412,6 @@ def train(args):
                         old_pt = ckpt_dir / old.name.replace(".npz", ".pt")
                         old_pt.unlink(missing_ok=True)
                     print(f"  Checkpoint saved: {ckpt_path}")
-
-                new_opp = get_opponent(episode, args.opponent, ckpt_dir, args.no_curriculum)
-                if new_opp != opponent:
-                    opponent = new_opp
-                    env.close()
-                    env = OrbitWarsEnv(opponent=opponent)
-                    print(f"  Opponent updated: {opponent[:30]}")
 
                 obs, _ = env.reset()
                 if episode >= start_episode + args.episodes:
@@ -426,13 +507,18 @@ def _save_torch_compat(net, path, episode):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--episodes",       type=int,  default=1000)
-    parser.add_argument("--opponent",       type=str,  default="agent_v64.py")
-    parser.add_argument("--checkpoint-dir", type=str,  default="rl/checkpoints")
-    parser.add_argument("--seed",           type=int,  default=0)
-    parser.add_argument("--resume",         action="store_true")
-    parser.add_argument("--log-file",       type=str,  default=None)
-    parser.add_argument("--log-frequency",  type=int,  default=50)
-    parser.add_argument("--no-curriculum",  action="store_true")
+    parser.add_argument("--episodes",        type=int,  default=1000)
+    parser.add_argument("--opponent",        type=str,  default="agent_v64.py")
+    parser.add_argument("--checkpoint-dir",  type=str,  default="rl/checkpoints")
+    parser.add_argument("--seed",            type=int,  default=0)
+    parser.add_argument("--resume",          action="store_true")
+    parser.add_argument("--log-file",        type=str,  default=None)
+    parser.add_argument("--log-frequency",   type=int,  default=50)
+    parser.add_argument("--no-curriculum",   action="store_true",
+                        help="Skip curriculum; use --opponent directly")
+    parser.add_argument("--eval-games",      type=int,  default=EVAL_GAMES)
+    parser.add_argument("--eval-frequency",  type=int,  default=EVAL_FREQ)
+    parser.add_argument("--bc-pretrain",     type=str,  default=None,
+                        help="Path to BC-pretrained .npz checkpoint to initialize weights")
     args = parser.parse_args()
     train(args)
