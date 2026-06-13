@@ -10,11 +10,21 @@ Action space:      MultiDiscrete([40,40,4]*5)  — 5 fleet slots per turn
 Reward: terminal-only (+1 win, -1 loss, 0 draw).
 """
 
+import contextlib
+import io
+import logging
+
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 
-from kaggle_environments import make
+# kaggle_environments prints env-registration noise to stdout (failed cabt
+# load) and logs INFO/WARNING messages (OpenSpiel, LiteLLM) at import time;
+# silence both so training logs stay readable.
+with contextlib.redirect_stdout(io.StringIO()):
+    logging.disable(logging.WARNING)
+    from kaggle_environments import make
+logging.disable(logging.NOTSET)
 
 from rl.obs import OBS_SIZE, encode_obs, decode_action
 from rl.reward import compute_terminal_reward, compute_dense_reward, DENSE_SCALE
