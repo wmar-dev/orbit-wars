@@ -13,7 +13,10 @@ Usage:
 """
 
 import argparse
+import contextlib
+import io
 import json
+import logging
 import math
 import multiprocessing
 import statistics
@@ -21,8 +24,14 @@ import sys
 import time
 import importlib.util
 
-from kaggle_environments import make
-from kaggle_environments.envs.orbit_wars.orbit_wars import Planet
+# kaggle_environments prints env-registration noise to stdout (failed cabt
+# load) and logs INFO/WARNING messages (OpenSpiel, LiteLLM) at import time;
+# silence both so eval output stays readable.
+with contextlib.redirect_stdout(io.StringIO()):
+    logging.disable(logging.WARNING)
+    from kaggle_environments import make
+    from kaggle_environments.envs.orbit_wars.orbit_wars import Planet
+logging.disable(logging.NOTSET)
 
 
 KNOWN_OPPONENTS = [
