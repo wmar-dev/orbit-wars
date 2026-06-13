@@ -1,13 +1,15 @@
 # Kaggle Submissions
 
-Last updated: 2026-06-07
+Last updated: 2026-06-13
 
 ## My Submissions
 
 | ref | file | date | description | score |
 | --- | ---- | ---- | ----------- | ----- |
-| 53438731 | agent_v62.tar.gz | 2026-06-07 03:05 | agent_v62: best4 — splinter+eval+opponent+garrison, 70% vs v61 | 795.3 |
-| 53404085 | agent_v60.tar.gz | 2026-06-05 22:26 | agent_v60: lookahead beam search, depth=10, BEAM_K=3, 54% vs v58 | 845.0 |
+| 53481686 | agent_v58.tar.gz | 2026-06-08 15:10 | agent_v58: affordability fallback fix, 58% vs v57 | 795.7 |
+| 53481657 | agent_v38.tar.gz | 2026-06-08 15:10 | agent_v38: Candidate U threat-aware garrison floor | 721.8 |
+| 53438731 | agent_v62.tar.gz | 2026-06-07 03:05 | agent_v62: best4 — splinter+eval+opponent+garrison, 70% vs v61 | 801.0 |
+| 53404085 | agent_v60.tar.gz | 2026-06-05 22:26 | agent_v60: lookahead beam search, depth=10, BEAM_K=3, 54% vs v58 | 841.3 |
 | 53404079 | agent_v58.tar.gz | 2026-06-05 22:26 | agent_v60: lookahead beam search, depth=10, BEAM_K=3, 54% vs v58 | **880.7** |
 | 53383127 | agent_v59.tar.gz | 2026-06-05 06:15 | agent_v59: reduce garrison ceiling 4x->2.5x, 60% vs v56 | 779.3 |
 | 53308134 | agent_v58.tar.gz | 2026-06-03 00:53 | agent_v58: affordability fallback fix, 58% vs v57 | 851.0 |

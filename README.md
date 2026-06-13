@@ -65,13 +65,14 @@ make selfplay       # run agent vs itself (symmetric baseline)
 | `agent_v54.py` | Combined C3+C1 (garrison buffer + ROI mismatch fix) | 58% win rate vs v47 (50 games) — below C3 alone |
 | `agent_v56.py` | + Iterative comet intercept: replace 2-pass with convergent fixed-point loop (10 iter, eps=0.5); non-convergent → valid=False, no wasted fleet | 66% win rate vs v50 (50 games) |
 | `agent_v57.py` | Candidate A: early dispatch for neutrals (step<60) — send surplus above garrison floor without waiting for full ships_needed | 0% vs v56 (20 games) — FAIL |
-| `agent_v58.py` | Candidate B: multi-planet dispatch — remove single-sender serialization; each planet finds its own best ROI target independently | Kaggle: 851.0 |
+| **`agent_v58.py`** | **Candidate B: multi-planet dispatch — remove single-sender serialization; each planet finds its own best ROI target independently** | **Kaggle: 851.0–880.7; beats agent_v65 (≡v64) 56.7% h2h (30 games) — current best** |
 | `agent_v59.py` | Candidate C: reduce garrison ceiling from 4× to 2.5× production (1.0+1.5× ramp vs 1.0+3.0× ramp); frees ships for larger mid-game dispatches | 100% vs v56 (50 games) — REGRESSION on Kaggle (779.3 vs 851.0) |
 | `agent_v60.py` | Lookahead beam search: evaluate top-K alternative targets per mine N turns forward before committing; SEARCH_STRATEGY=beam, SEARCH_DEPTH=10, BEAM_K=3 | 54% vs v58 (50 games); Kaggle: 916.9 |
 | `agent_v61.py` | + Dynamic garrison floor: cap gff at 2.5× (vs 4×) over 400 turns (vs 300); frees ships for mid/late dispatch without over-exposing planets | 56% vs v60 (50 games) |
-| **`agent_v62.py`** | **best4: splinter dispatch + enhanced eval + fixed opponent model + dynamic garrison; 70% vs v61, 100% vs 3/4 local opponents** | **70% vs v61 (50 games)** |
-| **`agent_v63.py`** | **experiments round 3: corrected weighted beam eval (+12pp over buggy v61 attempt); 52% vs v62, 100% vs 3/4 local opponents** | **52% vs v62 (50 games)** |
-| **`agent_v64.py`** | **experiments round 4: multi-turn plan skip candidates in beam search (54% vs v63); opponent model v3 discarded (34%); phase detection discarded (48%)** | **54% vs v63 (50 games)** |
+| `agent_v62.py` | best4: splinter dispatch + enhanced eval + fixed opponent model + dynamic garrison; 70% vs v61, 100% vs 3/4 local opponents | 70% vs v61 (50 games) |
+| `agent_v63.py` | experiments round 3: corrected weighted beam eval (+12pp over buggy v61 attempt); 52% vs v62, 100% vs 3/4 local opponents | 52% vs v62 (50 games) |
+| `agent_v64.py` | experiments round 4: multi-turn plan skip candidates in beam search (54% vs v63); opponent model v3 discarded (34%); phase detection discarded (48%) | 54% vs v63 (50 games) |
+| `agent_v65.py` | Round 5: 4 new candidates (multi-source attacks, fleet-size convergence, FFA adaptation, endgame focus) all discarded — v65 ≡ v64 baseline | Direct h2h vs agent_v58: 43.3% (30 games) — REGRESSION; chain v58→...→v64 is non-transitive, agent_v58 remains the strongest local agent |
 
 ## How It Works
 
