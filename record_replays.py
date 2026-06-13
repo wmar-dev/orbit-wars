@@ -201,13 +201,17 @@ def record_games(our_agent_path, opponent_path, n_games, out_dir):
                 for f in fleets_raw
             ]
 
+            # Reorder to [our, opponent] to match `agents` and `outcome` below —
+            # for odd game_idx, our_player == 1, so absolute index 0 is the opponent.
             moves = [
-                {"player": p, "dispatches": move_lookup.get((turn_num, p), [])}
-                for p in range(2)
+                {"player": p, "dispatches": move_lookup.get((turn_num, abs_p), [])}
+                for p, abs_p in enumerate((our_player, opp_player))
             ]
 
-            planet_counts = _compute_planet_counts(planets_raw, 2)
-            ship_totals = _compute_ship_totals(planets_raw, fleets_raw, 2)
+            planet_counts_abs = _compute_planet_counts(planets_raw, 2)
+            ship_totals_abs = _compute_ship_totals(planets_raw, fleets_raw, 2)
+            planet_counts = [planet_counts_abs[our_player], planet_counts_abs[opp_player]]
+            ship_totals = [ship_totals_abs[our_player], ship_totals_abs[opp_player]]
 
             turn_records.append({
                 "turn": turn_num,
