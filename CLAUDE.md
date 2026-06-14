@@ -5,6 +5,6 @@ After creating a new agent file or recording eval results, always update the Age
 <!-- SPECKIT START -->
 ## Current Feature
 
-Active implementation plan: [specs/029-experiments-round-6/plan.md](specs/029-experiments-round-6/plan.md)
+Active implementation plan: [specs/030-experiments-round-7/plan.md](specs/030-experiments-round-7/plan.md)
 
 <!-- SPECKIT END -->

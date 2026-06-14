@@ -1,7 +1,7 @@
 COMPETITION  := orbit-wars
-AGENT        := agent_v64.py
+AGENT        := agent_v68.py
 EVAL_RL      ?= /tmp/rl_agent.py
-RENDER_AGENT    ?= agent_v64.py
+RENDER_AGENT    ?= agent_v68.py
 RENDER_OPPONENT ?= random
 RENDER_OUT      ?= render_4player_out.ipynb
 RENDER2_OUT     ?= render_2player_out.ipynb
@@ -39,7 +39,7 @@ venv:
 	$(UV) venv $(VENV)
 
 install: venv
-	$(UV) pip install --python $(VENV) "kaggle-environments>=1.28.0" kaggle papermill
+	$(UV) pip install --python $(VENV) "kaggle-environments>=1.28.0" kaggle papermill torch
 
 test:
 	$(UV) run --python $(VENV) python -c "\

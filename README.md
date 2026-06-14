@@ -71,9 +71,10 @@ make selfplay       # run agent vs itself (symmetric baseline)
 | `agent_v61.py` | + Dynamic garrison floor: cap gff at 2.5× (vs 4×) over 400 turns (vs 300); frees ships for mid/late dispatch without over-exposing planets | 56% vs v60 (50 games) |
 | `agent_v62.py` | best4: splinter dispatch + enhanced eval + fixed opponent model + dynamic garrison; 70% vs v61, 100% vs 3/4 local opponents | 70% vs v61 (50 games) |
 | `agent_v63.py` | experiments round 3: corrected weighted beam eval (+12pp over buggy v61 attempt); 52% vs v62, 100% vs 3/4 local opponents | 52% vs v62 (50 games) |
-| **`agent_v64.py`** | **experiments round 4: multi-turn plan skip candidates in beam search (54% vs v63); opponent model v3 discarded (34%); phase detection discarded (48%)** | **Round 6 baseline: beats agent_v58 52.0% and agent_v60 60.0% h2h (50 games each, --swap) — current best** |
+| `agent_v64.py` | experiments round 4: multi-turn plan skip candidates in beam search (54% vs v63); opponent model v3 discarded (34%); phase detection discarded (48%) | Round 6 baseline: beats agent_v58 52.0% and agent_v60 60.0% h2h (50 games each, --swap); loses to agent_v68 64.0% h2h (50 games, --swap) |
 | `agent_v65.py` | Round 5: 4 new candidates (multi-source attacks, fleet-size convergence, FFA adaptation, endgame focus) all discarded — v65 ≡ v64 baseline | 43.3% vs agent_v58 (30 games) — superseded by round 6's 50-game matrix (v64 beats v58 52.0%); the 30-game sample was high-variance noise |
 | `agent_v67.py` | Round 6: 2 new candidates from replay analysis vs slawekbiel_agent — affordable fallback target (interferes with multi-turn plan skip) and relative-strength garrison scaling, both discarded — v67 ≡ v64 baseline | 6.0% (Candidate 1, severe regression) and 48.0% (Candidate 2, even) vs agent_v64 (50 games each, --swap) |
+| **`agent_v68.py`** | **Round 7: opening-game idle-planet rush candidate added to beam search (full-fleet rush to cheapest affordable target for step ≤ 20) — established-game variant (step > 20) discarded as severe regression** | **64.0% (32/50, --swap) vs agent_v64; 0.0% (0/30, --swap) vs slawekbiel_agent (benchmark) — tied with agent_v64's 0.0% (0/30), no regression — current best** |
 
 ## How It Works
 
