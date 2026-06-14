@@ -1,15 +1,32 @@
 """
-Orbit Wars - agent_v64 (experiments round 4)
+Orbit Wars - agent_v68 (experiments round 7)
 
-Built on agent_v63 (corrected weighted beam eval, 52% vs v62).
+Built on agent_v64 (current best; 52% vs v58 per Round 6's corrected
+analysis, 50% vs v58 / 75% vs v60 per Round 7's T005/T006 re-check).
 
-Experiments round 4:
-  DISCARDED  OPPONENT_MODEL_V3_ENABLED — production-weighted opponent in sim (34% vs v63)
-  KEPT  MULTI_TURN_PLAN_ENABLED        — skip candidates in beam search (54% vs v63)
-  DISCARDED  PHASE_DETECTION_ENABLED    — adjust dispatch params by game phase (48% vs v63)
+Round 7 found a strong, loadable benchmark opponent (slawekbiel_agent,
+agent_v64 won 0/20) and replay-analyzed 5 losses. The dominant pattern:
+slawekbiel dispatches its starting fleet at turn 1 in 4/5 games, while
+agent_v64 waits 4-8 turns and then commits its whole fleet at once,
+losing the race to a second planet by the median divergence turn of 9.
 
-Inherited from v63 (round 3):
+Experiments round 7 (both candidates are *additive* beam-search
+candidates for otherwise-idle planets; the existing greedy proposal and
+MULTI_TURN_PLAN_ENABLED's "skip" candidate are untouched and still scored
+by the same 10-turn forward sim):
+  CANDIDATE_1_ENABLED — opening rush (step <= OPENING_RUSH_WINDOW): idle
+    planet rushes its full fleet to the cheapest outright-affordable
+    target instead of always waiting for its best-ROI target.
+  CANDIDATE_2_ENABLED — established-game rush (step > OPENING_RUSH_WINDOW):
+    same mechanism for idle planets later in the game, where agent_v64's
+    dispatch rate falls to 0.00/turn (turns 100-200) vs the opponent's
+    ~0.94/turn.
+
+Inherited from v64 (round 4):
   KEPT  WEIGHTED_EVAL_FIXED_ENABLED    — corrected production-weighted beam eval (52% vs v62)
+  KEPT  MULTI_TURN_PLAN_ENABLED        — skip candidates in beam search (54% vs v63)
+  DISCARDED  OPPONENT_MODEL_V3_ENABLED — production-weighted opponent in sim (34% vs v63)
+  DISCARDED  PHASE_DETECTION_ENABLED    — adjust dispatch params by game phase (48% vs v63)
   DISCARDED  DEFENSE_INTERCEPT_ENABLED — no benefit detected (48%/45% vs v62)
 
 Inherited from v62:
@@ -49,6 +66,14 @@ DEFENSE_INTERCEPT_ENABLED      = False  # DISCARDED — no benefit detected
 OPPONENT_MODEL_V3_ENABLED      = False  # DISCARDED — 34% vs v63, too pessimistic in sim
 MULTI_TURN_PLAN_ENABLED        = True   # P2 — KEPT (54% vs v63)
 PHASE_DETECTION_ENABLED        = False  # DISCARDED — 48% vs v63, aggressive floor reduction leaves planets vulnerable
+
+# ---------------------------------------------------------------------------
+# v68 Experiment toggles (Round 7) — set False to isolate/disable each
+# ---------------------------------------------------------------------------
+
+CANDIDATE_1_ENABLED            = True   # Opening rush (step <= OPENING_RUSH_WINDOW)
+CANDIDATE_2_ENABLED            = False  # Established-game rush (step > OPENING_RUSH_WINDOW)
+OPENING_RUSH_WINDOW            = 20     # boundary step between Candidate 1 and Candidate 2
 
 # ---------------------------------------------------------------------------
 # v62 Experiment toggles — set False to isolate/disable each
@@ -802,6 +827,40 @@ def _apply_dispatches(sim_state, dispatches, player):
 # Beam search
 # ---------------------------------------------------------------------------
 
+def _gen_idle_rush_candidate(mine, top_k, greedy_dispatches, greedy_moves,
+                              initial_planets_map, angular_velocity):
+    """Additional beam candidate for an otherwise-idle planet (no greedy
+    dispatch proposed this turn): rush its full fleet to the cheapest
+    target it can outright afford (no garrison/floor reservation). The
+    existing greedy/skip candidates are untouched, so _beam_search's
+    10-turn forward sim picks this only if it beats waiting."""
+    best = None  # (ships_needed, t, x_pred, y_pred)
+    for roi, t, x_pred, y_pred in top_k:
+        if t.owner == -1:
+            ships_needed = int(t.ships) + 1
+        else:
+            ships_needed, x_pred, y_pred = _enemy_fleet_size(
+                t, x_pred, y_pred, mine.x, mine.y, initial_planets_map, angular_velocity
+            )
+        if mine.ships < ships_needed:
+            continue
+        if best is None or ships_needed < best[0]:
+            best = (ships_needed, t, x_pred, y_pred)
+
+    if best is None:
+        return None
+
+    ships_needed, t, x_pred, y_pred = best
+    dist = math.hypot(x_pred - mine.x, y_pred - mine.y)
+    eta = max(1, int(dist / fleet_speed(ships_needed)))
+    new_dispatch = (mine.id, t.id, ships_needed, eta)
+    new_move = [mine.id, math.atan2(y_pred - mine.y, x_pred - mine.x), ships_needed]
+
+    alt_dispatches = greedy_dispatches + [new_dispatch]
+    alt_moves = greedy_moves + [new_move]
+    return (alt_dispatches, alt_moves)
+
+
 def _gen_beam_candidates(my_planets, targets, greedy_moves, planets, initial_planets_map,
                          angular_velocity, player, step):
     planets_map = {p.id: p for p in planets}
@@ -829,6 +888,13 @@ def _gen_beam_candidates(my_planets, targets, greedy_moves, planets, initial_pla
 
         existing = greedy_dispatch_map.get(mine.id)
         if existing is None:
+            is_opening = step <= OPENING_RUSH_WINDOW
+            rush_enabled = CANDIDATE_1_ENABLED if is_opening else CANDIDATE_2_ENABLED
+            if rush_enabled:
+                rush = _gen_idle_rush_candidate(mine, top_k, greedy_dispatches, greedy_moves,
+                                                 initial_planets_map, angular_velocity)
+                if rush is not None:
+                    candidates.append(rush)
             continue
 
         surplus = mine.ships - mine.production * gff
