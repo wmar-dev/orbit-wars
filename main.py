@@ -1,26 +1,37 @@
 """
-Orbit Wars - agent_v68 (experiments round 7)
+Orbit Wars - agent_v69 (experiments round 8)
 
-Built on agent_v64 (current best; 52% vs v58 per Round 6's corrected
-analysis, 50% vs v58 / 75% vs v60 per Round 7's T005/T006 re-check).
+Built on agent_v68 (current best; 64.0% vs agent_v64 per Round 7,
+but 0.0% vs slawekbiel_agent, the strongest loadable benchmark).
 
-Round 7 found a strong, loadable benchmark opponent (slawekbiel_agent,
-agent_v64 won 0/20) and replay-analyzed 5 losses. The dominant pattern:
-slawekbiel dispatches its starting fleet at turn 1 in 4/5 games, while
-agent_v64 waits 4-8 turns and then commits its whole fleet at once,
-losing the race to a second planet by the median divergence turn of 9.
+Round 8 pivots from constant-tweaking to qualitatively more advanced
+techniques aimed squarely at the slawekbiel benchmark wall. Reading
+slawekbiel's source (torch-vectorized "the-producer-agent") shows its
+edge is structural, not a learned policy: (1) global candidate scoring
+that jointly assigns (source, target) pairs across the whole board
+instead of per-planet greedy claiming, (2) a "regroup gradient" that
+repositions surplus ships from safe rear planets toward stressed front
+planets pre-emptively, and (3) reinforcement timing. All three are
+reproducible in pure Python.
 
-Experiments round 7 (both candidates are *additive* beam-search
-candidates for otherwise-idle planets; the existing greedy proposal and
-MULTI_TURN_PLAN_ENABLED's "skip" candidate are untouched and still scored
-by the same 10-turn forward sim):
-  CANDIDATE_1_ENABLED — opening rush (step <= OPENING_RUSH_WINDOW): idle
-    planet rushes its full fleet to the cheapest outright-affordable
-    target instead of always waiting for its best-ROI target.
-  CANDIDATE_2_ENABLED — established-game rush (step > OPENING_RUSH_WINDOW):
-    same mechanism for idle planets later in the game, where agent_v64's
-    dispatch rate falls to 0.00/turn (turns 100-200) vs the opponent's
-    ~0.94/turn.
+Round 8 candidates (each behind an independent toggle, isolated code
+region, default OFF so agent_v69 == agent_v68 until enabled):
+  GLOBAL_ALLOC_ENABLED — Candidate A: replace per-planet greedy target
+    claiming with a joint (source, target) assignment that resolves
+    conflicts globally (closes slawekbiel's biggest structural edge).
+  DEEP_SEARCH_ENABLED — Candidate B: anytime iterative-deepening beam
+    search bounded by DEEP_SEARCH_BUDGET_MS, with graceful fallback to
+    the v68 greedy/beam move if the budget is exhausted before any
+    search completes.
+  REGROUP_ENABLED — Candidate C: pre-emptive regroup-gradient
+    repositioning — rank owned planets by reachable-enemy-mass stress
+    and move surplus from low-stress rear planets toward high-stress
+    front planets, distinct from v64's reactive (and discarded)
+    DEFENSE_INTERCEPT_ENABLED.
+
+Inherited from v68 (round 7):
+  KEPT  CANDIDATE_1_ENABLED — opening rush (step <= OPENING_RUSH_WINDOW)
+  DISCARDED  CANDIDATE_2_ENABLED — established-game rush (severe regression)
 
 Inherited from v64 (round 4):
   KEPT  WEIGHTED_EVAL_FIXED_ENABLED    — corrected production-weighted beam eval (52% vs v62)
@@ -74,6 +85,17 @@ PHASE_DETECTION_ENABLED        = False  # DISCARDED — 48% vs v63, aggressive f
 CANDIDATE_1_ENABLED            = True   # Opening rush (step <= OPENING_RUSH_WINDOW)
 CANDIDATE_2_ENABLED            = False  # Established-game rush (step > OPENING_RUSH_WINDOW)
 OPENING_RUSH_WINDOW            = 20     # boundary step between Candidate 1 and Candidate 2
+
+# ---------------------------------------------------------------------------
+# v69 Experiment toggles (Round 8) — set False to isolate/disable each
+# ---------------------------------------------------------------------------
+
+GLOBAL_ALLOC_ENABLED   = True   # Candidate A: joint (source, target) assignment, replaces per-planet greedy claim
+DEEP_SEARCH_ENABLED    = False  # Candidate B: anytime iterative-deepening beam, bounded by DEEP_SEARCH_BUDGET_MS
+DEEP_SEARCH_BUDGET_MS  = 700    # wall-clock budget for Candidate B (leaves >=300ms margin under 1s actTimeout)
+DEEP_SEARCH_DEPTH_STEP = 10     # additional simulation depth per iterative-deepening pass
+REGROUP_ENABLED        = False  # Candidate C: pre-emptive regroup-gradient repositioning
+REGROUP_MIN_SURPLUS    = 3.0    # minimum idle surplus (above garrison floor) before a rear planet regroups
 
 # ---------------------------------------------------------------------------
 # v62 Experiment toggles — set False to isolate/disable each
@@ -473,6 +495,98 @@ def _detect_phase(planets, targets, player):
 
 
 # ---------------------------------------------------------------------------
+# Candidate A (Round 8): global coordinated allocation
+# ---------------------------------------------------------------------------
+
+def _global_alloc_moves(active_sources, targets, comet_path_lookup, comet_planet_ids,
+                         planets, initial_planets_map, angular_velocity):
+    """Joint (source, target) assignment, replacing the per-planet greedy claim.
+
+    Every (source, target) pair with a safe path is scored using the same
+    ROI/reward blend as the per-planet path, with ROI normalized per-source
+    (against that source's own best option, exactly as in the per-planet
+    path) so each score reflects "how good is this target relative to this
+    source's own alternatives" — a per-source utility that is meaningfully
+    comparable across sources. Pairs are then assigned highest-score-first:
+    a source whose top pick is already claimed by a higher-scoring pair
+    falls through to its next-best remaining target ("redirect remaining
+    sources"), giving a globally coherent assignment instead of one
+    dependent on iteration order.
+
+    A source's first surviving pair (i.e. its highest-scoring target not
+    yet claimed by another source) is its "best_target", exactly as in the
+    per-planet path — if that target is unaffordable or path-unsafe once
+    enemy reinforcement is accounted for, the source gives up entirely
+    (matching the per-planet path's behavior with MULTI_DISPATCH_ENABLED
+    off), rather than trying a cheaper splinter target.
+    """
+    source_candidates = []  # source_idx -> [(t, bx, by, roi)]
+    source_max_roi = []
+    for mine, floor in active_sources:
+        cands = []
+        max_roi = 0.0
+        for t in targets:
+            speed_for_lead = fleet_speed(t.ships + 1)
+            if t.id in comet_planet_ids:
+                x_pred, y_pred, valid = _comet_two_pass(t, mine.x, mine.y, comet_path_lookup, speed_for_lead)
+                if not valid:
+                    continue
+            else:
+                x_pred, y_pred = _converged_orbit_lead(t, mine, initial_planets_map, angular_velocity, speed_for_lead)
+            if _path_safe(mine.x, mine.y, x_pred, y_pred, all_planets=planets, target_id=t.id, source_id=mine.id):
+                roi = _roi(t, x_pred, y_pred, mine)
+                cands.append((t, x_pred, y_pred, roi))
+                if roi > max_roi:
+                    max_roi = roi
+        source_candidates.append(cands)
+        source_max_roi.append(max_roi if max_roi > 0 else 1.0)
+
+    pairs = []  # (score, source_idx, target, bx, by)
+    for src_idx, cands in enumerate(source_candidates):
+        for t, bx, by, roi in cands:
+            roi_norm = roi / source_max_roi[src_idx]
+            r_est = _reward_estimate(t, t.ships + 1)
+            score = (1.0 - REWARD_ALPHA) * roi_norm + REWARD_ALPHA * r_est
+            pairs.append((score, src_idx, t, bx, by))
+    pairs.sort(key=lambda p: p[0], reverse=True)
+
+    moves = []
+    assigned_source = set()
+    claimed = set()
+
+    for score, src_idx, t, bx, by in pairs:
+        if src_idx in assigned_source:
+            continue
+        if not MULTI_DISPATCH_ENABLED and t.id in claimed:
+            continue
+
+        mine, floor = active_sources[src_idx]
+        best_target, bbx, bby = t, bx, by
+
+        if best_target.owner == -1:
+            ships_needed = best_target.ships + 1
+        else:
+            ships_needed, bbx, bby = _enemy_fleet_size(
+                best_target, bbx, bby, mine.x, mine.y, initial_planets_map, angular_velocity
+            )
+            if not _path_safe(mine.x, mine.y, bbx, bby, all_planets=planets,
+                               target_id=best_target.id, source_id=mine.id):
+                assigned_source.add(src_idx)
+                continue
+
+        if mine.ships < ships_needed:
+            assigned_source.add(src_idx)
+            continue
+
+        assigned_source.add(src_idx)
+        claimed.add(best_target.id)
+        angle = math.atan2(bby - mine.y, bbx - mine.x)
+        moves.append([mine.id, angle, ships_needed])
+
+    return moves
+
+
+# ---------------------------------------------------------------------------
 # Greedy dispatch
 # ---------------------------------------------------------------------------
 
@@ -602,6 +716,7 @@ def _greedy_moves(obs, planets, my_planets, targets, initial_planets_map,
             intercept_senders.add(best_source.id)
 
     claimed_targets = set()
+    active_sources = []  # Candidate A: (mine, floor) deferred to _global_alloc_moves
 
     for mine in my_planets:
         if mine.id in departing_this_turn:
@@ -659,6 +774,11 @@ def _greedy_moves(obs, planets, my_planets, targets, initial_planets_map,
 
         floor = max(mine.production * gff, incoming + buffer)
         if mine.ships - floor <= 0:
+            continue
+
+        # Candidate A: defer target-claiming to the global joint assignment pass
+        if GLOBAL_ALLOC_ENABLED:
+            active_sources.append((mine, floor))
             continue
 
         candidates = []
@@ -756,6 +876,76 @@ def _greedy_moves(obs, planets, my_planets, targets, initial_planets_map,
         claimed_targets.add(best_target.id)
         angle = math.atan2(by - mine.y, bx - mine.x)
         moves.append([mine.id, angle, ships_needed])
+
+    if GLOBAL_ALLOC_ENABLED and active_sources:
+        moves.extend(_global_alloc_moves(active_sources, targets, comet_path_lookup, comet_planet_ids,
+                                          planets, initial_planets_map, angular_velocity))
+
+    return moves
+
+
+# ---------------------------------------------------------------------------
+# Candidate C (Round 8): regroup-gradient repositioning
+# ---------------------------------------------------------------------------
+
+def _regroup_moves(my_planets, targets, planets, initial_planets_map, angular_velocity,
+                    comet_path_lookup, comet_planet_ids, step, dispatching_ids):
+    """Pre-emptive repositioning: move surplus from low-stress rear planets
+    toward high-stress front planets, over safe orbital-lead paths only.
+
+    "Stress" is the inverse-distance-weighted enemy ship mass reachable from
+    a planet — a continuous proxy for how exposed/contested it is. Only
+    planets that did not already dispatch via the greedy pass
+    (`dispatching_ids`) and that hold surplus above the garrison floor are
+    considered as regroup sources; their surplus flows toward the
+    highest-stress owned planet that is more stressed than the source itself.
+    """
+    if len(my_planets) < 2:
+        return []
+
+    enemy_planets = [t for t in targets if t.owner >= 0]
+    if not enemy_planets:
+        return []
+
+    def stress(p):
+        return sum(e.ships / (math.hypot(p.x - e.x, p.y - e.y) + 1.0) for e in enemy_planets)
+
+    stresses = {p.id: stress(p) for p in my_planets}
+
+    if DYNAMIC_GARRISON_ENABLED:
+        gff = 1.0 + 1.5 * min(step / 400.0, 1.0)
+    else:
+        gff = 1.0 + 3.0 * min(step / 300.0, 1.0)
+
+    moves = []
+    for rear in my_planets:
+        if rear.id in dispatching_ids:
+            continue
+        floor = rear.production * gff
+        surplus = rear.ships - floor
+        if surplus < REGROUP_MIN_SURPLUS:
+            continue
+
+        fronts = [p for p in my_planets if p.id != rear.id and stresses[p.id] > stresses[rear.id]]
+        if not fronts:
+            continue
+        front = max(fronts, key=lambda p: stresses[p.id])
+
+        send = int(surplus)
+        speed = fleet_speed(send)
+        if front.id in comet_planet_ids:
+            x_pred, y_pred, valid = _comet_two_pass(front, rear.x, rear.y, comet_path_lookup, speed)
+            if not valid:
+                continue
+        else:
+            x_pred, y_pred = _converged_orbit_lead(front, rear, initial_planets_map, angular_velocity, speed)
+
+        if not _path_safe(rear.x, rear.y, x_pred, y_pred, all_planets=planets,
+                           target_id=front.id, source_id=rear.id):
+            continue
+
+        angle = math.atan2(y_pred - rear.y, x_pred - rear.x)
+        moves.append([rear.id, angle, send])
 
     return moves
 
@@ -1156,6 +1346,82 @@ def _lookahead_search(strategy, obs, greedy_moves, base_state, planets, my_plane
 
 
 # ---------------------------------------------------------------------------
+# Candidate B (Round 8): anytime iterative-deepening beam search
+# ---------------------------------------------------------------------------
+
+def _score_state_at_depth(state, player, depth, t_start, budget_ms):
+    """Simulate up to `depth` steps (or until `budget_ms` elapses) and score."""
+    if WEIGHTED_EVAL_FIXED_ENABLED:
+        score = 0.0
+        for _ in range(depth):
+            if (time.perf_counter() - t_start) * 1000 > budget_ms:
+                break
+            state.step(opponent_model=OPPONENT_MODEL_V2_ENABLED, player=player)
+            own_prod = sum(p.production for p in state.planets if p.owner == player)
+            opp_prod = sum(p.production for p in state.planets if 0 <= p.owner != player)
+            score += (own_prod - opp_prod)
+        own_transit = sum(f.ships for f in state.fleets if f.owner == player)
+        opp_transit = sum(f.ships for f in state.fleets if 0 <= f.owner != player)
+        score += TRANSIT_WEIGHT * (own_transit - opp_transit)
+        if EVAL_ENHANCED_ENABLED:
+            own_planets = sum(1 for p in state.planets if p.owner == player)
+            opp_planets = sum(1 for p in state.planets if 0 <= p.owner != player)
+            own_ships = sum(p.ships for p in state.planets if p.owner == player)
+            opp_ships = sum(p.ships for p in state.planets if 0 <= p.owner != player)
+            score += PLANET_COUNT_WEIGHT * (own_planets - opp_planets)
+            score += SHIP_COUNT_WEIGHT * (own_ships - opp_ships)
+        return score
+
+    for _ in range(depth):
+        if (time.perf_counter() - t_start) * 1000 > budget_ms:
+            break
+        state.step(opponent_model=OPPONENT_MODEL_V2_ENABLED, player=player)
+    return state.score(player, TRANSIT_WEIGHT)
+
+
+def _deep_search(obs, greedy_moves, base_state, planets, my_planets, targets,
+                  initial_planets_map, angular_velocity, raw_fleets, player, step, t_start):
+    """Anytime iterative-deepening beam: re-score the same candidate move-sets at
+    progressively greater simulation depth while elapsed time stays under
+    DEEP_SEARCH_BUDGET_MS, keeping the best result from the deepest pass that
+    completed. Falls back to `greedy_moves` if no pass completes (FR-010)."""
+    candidates = _gen_beam_candidates(my_planets, targets, greedy_moves, planets,
+                                       initial_planets_map, angular_velocity, player, step)
+    if not candidates:
+        return greedy_moves
+
+    best_moves = greedy_moves
+    found_any = False
+    depth = SEARCH_DEPTH
+
+    while (time.perf_counter() - t_start) * 1000 < DEEP_SEARCH_BUDGET_MS:
+        iter_best_score = float('-inf')
+        iter_best_moves = None
+        timed_out = False
+        for dispatches, moves in candidates:
+            if (time.perf_counter() - t_start) * 1000 > DEEP_SEARCH_BUDGET_MS:
+                timed_out = True
+                break
+            state = base_state.copy()
+            _apply_dispatches(state, dispatches, player)
+            score = _score_state_at_depth(state, player, depth, t_start, DEEP_SEARCH_BUDGET_MS)
+            if score > iter_best_score:
+                iter_best_score = score
+                iter_best_moves = moves
+
+        if timed_out or iter_best_moves is None:
+            break
+
+        best_moves = iter_best_moves
+        found_any = True
+        depth += DEEP_SEARCH_DEPTH_STEP
+
+    if not found_any:
+        return greedy_moves
+    return best_moves
+
+
+# ---------------------------------------------------------------------------
 # Main agent entry point
 # ---------------------------------------------------------------------------
 
@@ -1187,7 +1453,18 @@ def agent(obs):
     greedy_moves = _greedy_moves(obs, planets, my_planets, targets, initial_planets_map,
                                  angular_velocity, raw_fleets, player, step)
 
+    if REGROUP_ENABLED:
+        comet_planet_ids = set(_build_comet_path_lookup_cached.keys())
+        dispatching_ids = {m[0] for m in greedy_moves}
+        greedy_moves = greedy_moves + _regroup_moves(
+            my_planets, targets, planets, initial_planets_map, angular_velocity,
+            _build_comet_path_lookup_cached, comet_planet_ids, step, dispatching_ids)
+
     base_state = _build_sim_state(planets, raw_fleets, player)
+
+    if DEEP_SEARCH_ENABLED:
+        return _deep_search(obs, greedy_moves, base_state, planets, my_planets, targets,
+                            initial_planets_map, angular_velocity, raw_fleets, player, step, t_start)
 
     return _lookahead_search(SEARCH_STRATEGY, obs, greedy_moves, base_state, planets,
                              my_planets, targets, initial_planets_map, angular_velocity,
